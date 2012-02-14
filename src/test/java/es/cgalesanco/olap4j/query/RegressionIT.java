@@ -7,7 +7,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.Arrays;
 
-import org.apache.commons.vfs.events.CreateEvent;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -88,9 +87,11 @@ public class RegressionIT {
 			// Establish the connection with the provider and retrieves the "Sales" cube 
 			Class.forName("mondrian.olap4j.MondrianOlap4jDriver");
 
+			// Copy FoodMart catalog resource into a temporary file 
 			File catalogFile = File.createTempFile("foodmart", ".xml");
 			FixtureUtils.copyResource("FoodMart.xml", catalogFile.getParentFile(), catalogFile.getName());
-			
+
+			// TODO change to retrieve connection info from the integration testing environment.
 			Connection jdbcCn = DriverManager.getConnection("jdbc:mondrian:"
 					+ "JdbcDrivers=com.mysql.jdbc.Driver;"
 					+ "Jdbc=jdbc:mysql://localhost/foodmart;"
@@ -434,7 +435,7 @@ public class RegressionIT {
 			int j = 0;
 			for(ExpectedMemberInfo expectedMember : expectedMembers) {
 				Member actualMember = pos.getMembers().get(j);
-				
+				 
 				assertEquals(
 						String.format("Line %1$s, Column %2$s: Unexpected member %3$s, expected %4$s", i, j, actualMember.getUniqueName(), expectedMember.getMemberName()),
 						expectedMember.getMemberName(), 
