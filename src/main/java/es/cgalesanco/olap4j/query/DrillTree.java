@@ -103,9 +103,11 @@ class DrillTree {
 
 		private final List<QueryHierarchy> dimensions;
 		private final UnionBuilder union;
+		private final QueryAxis axis;
 
-		public ToOlap4j(List<QueryHierarchy> dimensions) {
-			this.dimensions = dimensions;
+		public ToOlap4j(QueryAxis axis) {
+			this.axis = axis;
+			this.dimensions = axis.getHierarchies();
 			union = new UnionBuilder();
 		}
 
@@ -128,9 +130,9 @@ class DrillTree {
 
 			for (int i = 0; i < drillDepth; ++i) {
 				xJoin.join(new MemberNode(null, parents.get(i)));
-			}
+			} 
 
-			xJoin.join(dimensions.get(drillDepth).toOlap4j(drills));
+			xJoin.join(dimensions.get(drillDepth).toOlap4j(drills, axis.isExpanded(dimensions.get(drillDepth).getHierarchy())));
 
 			for (int i = drillDepth + 1; i < dimensions.size(); ++i) {
 				xJoin.join(dimensions.get(i).toOlap4j());
@@ -232,9 +234,9 @@ class DrillTree {
 		visit(parents, root, visitor);
 	}
 
-	public ParseTreeNode toOlap4j(List<QueryHierarchy> dimensions)
+	public ParseTreeNode toOlap4j(QueryAxis axis)
 			throws OlapException {
-		ToOlap4j visitor = new ToOlap4j(dimensions);
+		ToOlap4j visitor = new ToOlap4j(axis);
 		visit(visitor);
 		return visitor.getResult();
 	}

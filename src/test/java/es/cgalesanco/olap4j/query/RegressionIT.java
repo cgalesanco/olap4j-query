@@ -419,6 +419,33 @@ public class RegressionIT {
 				);
 	}
 	
+	@Test
+	public void testExpand() throws Exception {
+		
+		Member root1997 = testHierarchies[0].getHierarchy().getRootMembers().get("1997");
+		testAxis.expand(testHierarchies[0].getHierarchy());
+		
+		testHierarchies[0].include(Operator.DESCENDANTS, root1997);
+
+		assertRowsMembers(
+				"-[Time].[1997]",
+				" -[Time].[1997].[Q1]",
+				"   [Time].[1997].[Q1].[1]",
+				"   [Time].[1997].[Q1].[2]",
+				"   [Time].[1997].[Q1].[3]",
+				" -[Time].[1997].[Q2]",
+				"   [Time].[1997].[Q2].[4]",
+				"   [Time].[1997].[Q2].[5]",
+				"   [Time].[1997].[Q2].[6]",
+				" -[Time].[1997].[Q3]",
+				"   [Time].[1997].[Q3].[7]",
+				"   [Time].[1997].[Q3].[8]",
+				"   [Time].[1997].[Q3].[9]",
+				" -[Time].[1997].[Q4]",
+				"   [Time].[1997].[Q4].[10]",
+				"   [Time].[1997].[Q4].[11]",
+				"   [Time].[1997].[Q4].[12]");
+	}
 	
 	
 	private void assertRowsMembers(String... expectedPositions) throws Exception{

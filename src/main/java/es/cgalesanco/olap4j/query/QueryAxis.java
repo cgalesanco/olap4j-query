@@ -51,6 +51,7 @@ public class QueryAxis {
 	private List<Member> sortPosition;
 	private SortOrder sortOrder;
 	private List<Property> properties;
+	private List<Hierarchy> expandeHierarchies;
 
 	/**
 	 * Creates a {@link QueryAxis}.
@@ -65,6 +66,7 @@ public class QueryAxis {
 		this.query = query;
 		hierarchies = new ArrayList<QueryHierarchy>();
 		drillTree = new DrillTree();
+		expandeHierarchies = new ArrayList<Hierarchy>();
 	}
 
 	/**
@@ -262,6 +264,14 @@ public class QueryAxis {
 		checkDrillStructure(position);
 		drillTree.remove(position);
 	}
+	
+	public void expand(Hierarchy h) {
+		expandeHierarchies.add(h);
+	}
+	
+	public boolean isExpanded(Hierarchy h) {
+		return expandeHierarchies.contains(h);
+	}
 
 	/**
 	 * Tests if a specified position is drilled.
@@ -387,7 +397,7 @@ public class QueryAxis {
 		if (axis != Axis.FILTER) {
 			if (hierarchies.isEmpty())
 				return null;
-			ParseTreeNode axisExpression = drillTree.toOlap4j(hierarchies);
+			ParseTreeNode axisExpression = drillTree.toOlap4j(this);
 			if (sortPosition != null) {
 				axisExpression = Mdx.order(axisExpression, sortPosition,
 						sortOrder);

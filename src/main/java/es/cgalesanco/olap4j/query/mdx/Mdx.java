@@ -59,6 +59,18 @@ public class Mdx {
 						new BigDecimal(level), false));
 	}
 
+	public static ParseTreeNode descendants(ParseTreeNode from, int level,
+			String flag) {
+		if ( flag == null )
+			return descendants(from, level);
+		else
+			return new CallNode(null, "Descendants",
+					Syntax.Function,
+					from, 
+					LiteralNode.createNumeric(null, new BigDecimal(level), false),
+					LiteralNode.createSymbol(null, flag));
+	}
+
 	public static ParseTreeNode order(ParseTreeNode axisExpression,
 			List<Member> sortPosition, SortOrder sortOrder) {
 		MemberNode[] members = new MemberNode[sortPosition.size()];
