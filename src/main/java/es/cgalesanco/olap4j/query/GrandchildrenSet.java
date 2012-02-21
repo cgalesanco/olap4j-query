@@ -8,7 +8,7 @@ import org.olap4j.metadata.Member;
 import es.cgalesanco.olap4j.query.mdx.Mdx;
 import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
-public class GrandchildrenSet implements MemberSet {
+class GrandchildrenSet implements MemberSet {
 	private Member parent;
 	private List<Member> excludedChildren;
 	

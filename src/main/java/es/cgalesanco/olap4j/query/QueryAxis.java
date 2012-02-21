@@ -201,11 +201,11 @@ public class QueryAxis {
 		QueryHierarchy h = hierarchies.remove(index);
 		HierarchyExpander e = expanders.remove(index);
 		hierarchies.add(index - 1, h);
-		expanders.add(index-1, e);
+		expanders.add(index - 1, e);
 	}
 
 	/**
-	 * Places a @{link QueryHierarchy) object one position lower in the list of
+	 * Places a {@link QueryHierarchy) object one position lower in the list of
 	 * current dimensions. Uses a 0 based index. For example, to place the 4th
 	 * dimension on the current axis one position lower, one would need to call
 	 * {@code pushDown(3)}, so the dimension would then use axis index 4 and the
@@ -223,7 +223,7 @@ public class QueryAxis {
 		QueryHierarchy h = hierarchies.remove(index);
 		HierarchyExpander e = expanders.remove(index);
 		hierarchies.add(index + 1, h);
-		expanders.add(index+1, e);
+		expanders.add(index + 1, e);
 	}
 
 	/**
@@ -245,7 +245,7 @@ public class QueryAxis {
 	 */
 	public void drill(Member... drilledMember) throws IllegalArgumentException {
 		checkDrillStructure(drilledMember);
-		if ( expanders.get(drilledMember.length-1).isHierarchyExpanded() )
+		if (expanders.get(drilledMember.length - 1).isHierarchyExpanded())
 			drillTree.remove(drilledMember);
 		else
 			drillTree.add(drilledMember);
@@ -270,7 +270,7 @@ public class QueryAxis {
 	 */
 	public void undrill(Member... position) throws IllegalArgumentException {
 		checkDrillStructure(position);
-		if ( expanders.get(position.length-1).isHierarchyExpanded() )
+		if (expanders.get(position.length - 1).isHierarchyExpanded())
 			drillTree.add(position);
 		else
 			drillTree.remove(position);
@@ -289,11 +289,12 @@ public class QueryAxis {
 	 */
 	public boolean isDrilled(Member... position) {
 		checkDrillStructure(position);
-		boolean hierachyExpanded = expanders.get(position.length-1).isHierarchyExpanded();
-		if ( drillTree.isDrilled(position) ) {
+		boolean hierachyExpanded = expanders.get(position.length - 1)
+				.isHierarchyExpanded();
+		if (drillTree.isDrilled(position)) {
 			return !hierachyExpanded;
 		}
-		
+
 		return hierachyExpanded;
 	}
 
@@ -312,34 +313,58 @@ public class QueryAxis {
 		return lister.getList();
 	}
 
+	/**
+	 * Expands the full hierarchy, showing every member. Removes any previous
+	 * drill/undrill operation and starts recording undrills in the drill list.
+	 * 
+	 * @param h
+	 *            hierarchy to expand.
+	 */
 	public void expandHierarchy(QueryHierarchy h) {
 		int pos = hierarchies.indexOf(h);
-		if ( pos < 0 )
+		if (pos < 0)
 			return;
-		
+
 		expanders.get(pos).expandHierarchy();
-		if ( drillTree != null )
+		if (drillTree != null)
 			drillTree.clearLevel(pos);
 	}
-	
+
+	/**
+	 * Collapses the full hierarchy, showing only its roots members. Removes any
+	 * previous drill/undrill operation and starts recording drills in the drill
+	 * list.
+	 * 
+	 * @param h
+	 *            hierarchy to collapse.
+	 */
 	public void collapseHierarchy(QueryHierarchy h) {
 		int pos = hierarchies.indexOf(h);
-		if ( pos < 0 )
+		if (pos < 0)
 			return;
-		
+
 		expanders.get(pos).collapseHierarchy();
-		if ( drillTree != null )
+		if (drillTree != null)
 			drillTree.clearLevel(pos);
 	}
-	
+
+	/**
+	 * Checks if a hierarchy is initially expanded or collapsed.
+	 * 
+	 * @param h
+	 *            hierarchy to check.
+	 * @return {@code true} if this hierarchy is initially expanded and is
+	 *         recording undrills; {@code false} if this hierarchy is initially
+	 *         collapsed and is recording drills.
+	 */
 	public boolean isExpanded(QueryHierarchy h) {
 		int pos = hierarchies.indexOf(h);
-		if ( pos < 0 )
+		if (pos < 0)
 			return false;
-		
+
 		return expanders.get(pos).isHierarchyExpanded();
 	}
-	
+
 	/**
 	 * <P>
 	 * Sorts the positions of this axis by the value of given cell coordinates
@@ -399,11 +424,11 @@ public class QueryAxis {
 	public void addDimensionProperty(Property prop) {
 		properties.add(prop);
 	}
-	
+
 	public void addDimensionProperty(int index, Property prop) {
 		properties.add(index, prop);
 	}
-	
+
 	public List<Property> getDimensionProperties() {
 		return Collections.unmodifiableList(properties);
 	}
@@ -433,7 +458,8 @@ public class QueryAxis {
 		if (axis != Axis.FILTER) {
 			if (hierarchies.isEmpty())
 				return null;
-			ParseTreeNode axisExpression = drillTree.toOlap4j(hierarchies, expanders);
+			ParseTreeNode axisExpression = drillTree.toOlap4j(hierarchies,
+					expanders);
 			if (sortPosition != null) {
 				axisExpression = Mdx.order(axisExpression, sortPosition,
 						sortOrder);

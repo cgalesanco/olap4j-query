@@ -383,16 +383,17 @@ public class QueryHierarchy {
 	 * <p>
 	 * <p>
 	 * For hierarchies in a {@link org.olap4j.Axis.Standard#FILTER} axis,
-	 * generates the filter expression, ignoring the {@code drill} parameter.
+	 * generates the filter expression, ignoring any parameter.
 	 * </p>
 	 * 
+	 * @param expander
+	 *            helper object to execute drills.
 	 * @param drills
 	 *            list of drilled members.
 	 * @return the parse tree expressing this hierarchy set of members for the
 	 *         given drill list.
 	 */
-	public ParseTreeNode toOlap4j(HierarchyExpander expander,
-			List<Member> drills) {
+	ParseTreeNode toOlap4j(HierarchyExpander expander, List<Member> drills) {
 		if (getAxis().getLocation() == Axis.FILTER)
 			return toOlap4jFilter();
 
@@ -412,7 +413,7 @@ public class QueryHierarchy {
 	 * For filter hierarchies returns the filter expression for this hierarchy
 	 * </p>
 	 * 
-	 * @see #toOlap4j(List)
+	 * @see #toOlap4j(HierarchyExpander, List)
 	 * @return the parse tree expression for the root members of this query
 	 *         hierarchy.
 	 */
@@ -887,8 +888,10 @@ public class QueryHierarchy {
 		for (SelectionTree overridedChild : currentNode.getOverridingChildren()) {
 			VisitingInfo childVisit = current.visitChild(overridedChild);
 			overridedMembers.add(overridedChild.getMember());
-			toOlap4jQuery(childrenSign == Sign.INCLUDE && (!expander.isHierarchyExpanded() || descendantsSign == Sign.EXCLUDE), childVisit, expander,
-					drillList, expression);
+			toOlap4jQuery(
+					childrenSign == Sign.INCLUDE
+							&& (!expander.isHierarchyExpanded() || descendantsSign == Sign.EXCLUDE),
+					childVisit, expander, drillList, expression);
 		}
 
 		// If descendants are included, expand non-overriding nodes in the
@@ -897,8 +900,8 @@ public class QueryHierarchy {
 			// Childrens are excluded, so we have to add grandchildren to the
 			// axis expression
 			if (childrenSign == Sign.EXCLUDE) {
-				GrandchildrenSet expansionRoots = new GrandchildrenSet(currentMember,
-						overridedMembers);
+				GrandchildrenSet expansionRoots = new GrandchildrenSet(
+						currentMember, overridedMembers);
 				if (overridedMembers.isEmpty()) {
 					if (expander.isHierarchyExpanded())
 						expression
