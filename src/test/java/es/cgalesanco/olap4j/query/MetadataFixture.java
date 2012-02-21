@@ -82,7 +82,7 @@ public class MetadataFixture {
 		Member year = h.createRoot(Integer.toString(y));
 		for (int q = 0; q < 4; ++q) {
 			Member quarter = h.createMember(1, year, "Q" + (q + 1));
-			for (int m = q * 4; m < (q + 1) * 4; ++m) {
+			for (int m = q * 3; m < (q + 1) * 3; ++m) {
 				MemberMock month = h.createMember(2, quarter, Integer.toString(m + 1));
 				Calendar cal = Calendar.getInstance();
 				cal.clear();
