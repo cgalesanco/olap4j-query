@@ -102,12 +102,12 @@ class DrillTree {
 	private static class ToOlap4j implements Visitor {
 
 		private final List<QueryHierarchy> dimensions;
+		private final List<HierarchyExpander> expanders;
 		private final UnionBuilder union;
-		private final QueryAxis axis;
 
-		public ToOlap4j(QueryAxis axis) {
-			this.axis = axis;
-			this.dimensions = axis.getHierarchies();
+		public ToOlap4j(List<QueryHierarchy> dimensions, List<HierarchyExpander> expanders) {
+			this.dimensions = dimensions;
+			this.expanders = expanders;
 			union = new UnionBuilder();
 		}
 
@@ -130,9 +130,9 @@ class DrillTree {
 
 			for (int i = 0; i < drillDepth; ++i) {
 				xJoin.join(new MemberNode(null, parents.get(i)));
-			} 
+			}
 
-			xJoin.join(dimensions.get(drillDepth).toOlap4j(drills, axis.isExpanded(dimensions.get(drillDepth).getHierarchy())));
+			xJoin.join(dimensions.get(drillDepth).toOlap4j(expanders.get(drillDepth), drills));
 
 			for (int i = drillDepth + 1; i < dimensions.size(); ++i) {
 				xJoin.join(dimensions.get(i).toOlap4j());
@@ -228,15 +228,34 @@ class DrillTree {
 
 		return current.isDrilled(position[drillDepth]);
 	}
+	
+	public void clearLevel(final int level) {
+		if ( root != null )
+		clearLevel(0, root, level);
+	}
+
+	private void clearLevel(int currentLevel, Node current, int targetLevel) {
+		if ( currentLevel > targetLevel )
+			return;
+		if ( currentLevel == targetLevel ) {
+			if ( current.drills != null )
+				current.drills.clear();
+		}
+		else  if ( current.hasChildren() ) {
+			for(Node child : current.getChildren()) {
+				clearLevel(currentLevel+1, child, targetLevel);
+			}
+		}
+	}
 
 	public void visit(Visitor visitor) throws OlapException {
 		List<Member> parents = new ArrayList<Member>();
 		visit(parents, root, visitor);
 	}
 
-	public ParseTreeNode toOlap4j(QueryAxis axis)
+	public ParseTreeNode toOlap4j(List<QueryHierarchy> dimensions, List<HierarchyExpander> expanders)
 			throws OlapException {
-		ToOlap4j visitor = new ToOlap4j(axis);
+		ToOlap4j visitor = new ToOlap4j(dimensions, expanders);
 		visit(visitor);
 		return visitor.getResult();
 	}
@@ -272,3 +291,4 @@ class DrillTree {
 	}
 
 }
+

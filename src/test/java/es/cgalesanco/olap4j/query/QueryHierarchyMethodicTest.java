@@ -3,7 +3,6 @@ package es.cgalesanco.olap4j.query;
 import static org.junit.Assert.assertEquals;
 
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.junit.Before;
@@ -89,7 +88,7 @@ public class QueryHierarchyMethodicTest {
 			qh.clear();
 			st.apply(rootMember);
 			assertDrillExpression(notDrilled[i++],
-					qh.toOlap4j(Arrays.asList(rootMember), false), rootMember);
+					qh.toOlap4j(new HierarchyExpander(), Arrays.asList(rootMember)), rootMember);
 		}
 	}
 
@@ -107,11 +106,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Ed_Ich_Em
 				"Except(%1$s.Children, {%2$s})",
 				"%1$s.Children",
-				"Union(Except(%1$s.Children, {%2$s}), %2$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Union(Except(%1$s.Children, {%2$s}), Descendants(%2$s, 2))",
+				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Union(Except(%1$s.Children, {%2$s}), %2$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"%1$s.Children",
 				
 				// Root: Ed_Ich_Im
@@ -133,11 +132,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Id_Ich_Em
 				"Except(%1$s.Children, {%2$s})", 
 				"%1$s.Children",
-				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
+				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"%1$s.Children",
 				
 				// Root: Id_Ich_Im
@@ -185,11 +184,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Ed_Ich_Em
 				"Except(%1$s.Children, {%2$s})",
 				"%1$s.Children",
-				"Union(Except(%1$s.Children, {%2$s}), %2$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Union(Except(%1$s.Children, {%2$s}), Descendants(%2$s, 2))",
+				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Union(Except(%1$s.Children, {%2$s}), %2$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"%1$s.Children",
 
 				// Root: Ed_Ich_Im
@@ -226,11 +225,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Id_Ich_Em
 				"Except(%1$s.Children, {%2$s})", 
 				"%1$s.Children",
-				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
+				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"%1$s.Children",
 				
 				// Root: Id_Ich_Im
@@ -252,7 +251,7 @@ public class QueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(Arrays.asList(rootMember), false),
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(new HierarchyExpander(), Arrays.asList(rootMember)),
 							rootMember, childMember);
 				}
 			}
@@ -285,22 +284,22 @@ public class QueryHierarchyMethodicTest {
 				// Root: Ed_Ich_Em
 				"Except(%1$s.Children, {%2$s})",
 				"%1$s.Children",
-				"Union(Except(%1$s.Children, {%2$s}), %2$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
-				"Union(Except(%1$s.Children, {%2$s}), Descendants(%2$s, 2))",
-				"Union(%1$s.Children, Descendants(%2$s, 2))",
-				"Union(Except(%1$s.Children, {%2$s}), %2$s.Children)",
+				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
+				"Union(Descendants(%2$s, 2), %1$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
 
 				// Root: Ed_Ich_Im
 				"Except(DrilldownMember({%1$s}, {%1$s}, RECURSIVE), {%2$s})",
 				"DrilldownMember({%1$s}, {%1$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, %2$s.Children), {%1$s}, RECURSIVE), {%2$s})",
-				"DrilldownMember({%1$s}, {%1$s, %2$s}, RECURSIVE)",
-				"DrilldownMember(Union({%1$s}, Descendants(%2$s, 2)), {%1$s}, RECURSIVE), {%2$s})",
+				"DrilldownMember({%1$s}, {%2$s, %1$s}, RECURSIVE)",
+				"Except(DrilldownMember(Union({%1$s}, Descendants(%2$s, 2)), {%1$s}, RECURSIVE), {%2$s})",
 				"DrilldownMember(Union({%1$s}, Descendants(%2$s, 2)), {%1$s}, RECURSIVE)",
-				"DrilldownMember(Union({%1$s}, Except(%2$s.Children, {%2$s})), {%1$s}, RECURSIVE)",
-				"DrilldownMember({%1$s}, {%1$s, %2$s}, RECURSIVE)",
+				"Except(DrilldownMember(Union({%1$s}, %2$s.Children), {%1$s}, RECURSIVE), {%2$s})",
+				"DrilldownMember({%1$s}, {%2$s, %1$s}, RECURSIVE)",
 				
 				// Root Id_Ech_Em
 				"Descendants(Except(%1$s.Children, {%2$s}), 1)",
@@ -325,18 +324,18 @@ public class QueryHierarchyMethodicTest {
 				// Root: Id_Ich_Em
 				"Except(%1$s.Children, {%2$s})", 
 				"%1$s.Children",
-				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
-				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
-				"Union(%1$s.Children, Descendants(%2$s, 2))",
-				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
+				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
+				"Union(Descendants(%2$s, 2), %1$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
 				
 				// Root: Id_Ich_Im
 				"Except(DrilldownMember({%1$s}, {%1$s}, RECURSIVE), {%2$s})",
 				"DrilldownMember({%1$s}, {%1$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, %2$s.Children), {%1$s}, RECURSIVE), {%2$s})",
-				"DrilldownMember({%1$s}, {%1$s, %2$s}, RECURSIVE)",
+				"DrilldownMember({%1$s}, {%2$s, %1$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, Descendants(%2$s, 2)), {%1$s}, RECURSIVE), {%2$s})",
 				"DrilldownMember(Union({%1$s}, Descendants(%2$s, 2)), {%1$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, %2$s.Children), {%1$s}, RECURSIVE), {%2$s})",
@@ -351,7 +350,7 @@ public class QueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(Arrays.asList(rootMember,childMember), false),
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(new HierarchyExpander(), Arrays.asList(rootMember,childMember)),
 							rootMember, childMember);
 				}
 			}
@@ -377,11 +376,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Ed_Ich_Em
 				"Except(%1$s.Children, {%2$s})",
 				"%1$s.Children",
-				"Union(Except(%1$s.Children, {%2$s}), %2$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
-				"Union(Except(%1$s.Children, {%2$s}), Descendants(%2$s, 2))",
-				"Union(%1$s.Children, Descendants(%2$s, 2))",
-				"Union(Except(%1$s.Children, {%2$s}), %2$s.Children)",
+				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
+				"Union(Descendants(%2$s, 2), %1$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
 
 				// Root: Ed_Ich_Im
@@ -403,11 +402,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Id_Ich_Em
 				"Except(%1$s.Children, {%2$s})", 
 				"%1$s.Children",
-				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
-				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
-				"Union(%1$s.Children, Descendants(%2$s, 2))",
-				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
+				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
+				"Union(Descendants(%2$s, 2), %1$s.Children)",
+				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
 				
 				// Root: Id_Ich_Im
@@ -422,35 +421,10 @@ public class QueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(Arrays.asList(childMember), false),
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(new HierarchyExpander(), Arrays.asList(childMember)),
 							rootMember, childMember);
 				}
 			}
-		}
-	}
-	
-	@Test
-	public void testExpanded_oneLevel() {
-		String[] notDrilled = new String[] {
-				"{}", 
-				"{%1$s}", 
-				"%1$s.Children", 
-				"DrilldownMember({%1$s}, {%1$s}, RECURSIVE)",
-				"Descendants(%1$s, 2, SELF_AND_AFTER)", 
-				"Union({%1$s}, Descendants(%1$s, 2, SELF_AND_AFTER))", 
-				"Descendants(%1$s, 1, SELF_AND_AFTER)", 
-				"Descendants(%2$s, 0, SELF_AND_AFTER)",
-		};
-
-		int i = 0;
-		for (State st1 : State.values()) {
-				qh.clear();
-				st1.apply(rootMember);
-				if (i < notDrilled.length) {
-					System.out.println(st1);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(new ArrayList<Member>(), true),
-							rootMember);
-				}
 		}
 	}
 	
@@ -467,3 +441,4 @@ public class QueryHierarchyMethodicTest {
 	}
 
 }
+

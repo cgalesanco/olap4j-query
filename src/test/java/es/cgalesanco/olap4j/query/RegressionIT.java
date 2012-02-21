@@ -420,13 +420,22 @@ public class RegressionIT {
 	}
 	
 	@Test
-	public void testExpand() throws Exception {
+	public void testSingleHierarchy_expanded() throws Exception {
+		// Adds another hierarchy to the test axis to avoid a Mondrian bug.
+		// Comment out this lines to reproduce the bug.
+		QueryHierarchy workaroundHierarchy = query.getHierarchy("Store Type");
+		workaroundHierarchy.include(Operator.MEMBER, workaroundHierarchy.getHierarchy().getRootMembers().get(0));
+		testAxis.addHierarchy(workaroundHierarchy);
+		testAxis.expandHierarchy(testHierarchies[0]);
 		
-		Member root1997 = testHierarchies[0].getHierarchy().getRootMembers().get("1997");
-		testAxis.expand(testHierarchies[0].getHierarchy());
-		
-		testHierarchies[0].include(Operator.DESCENDANTS, root1997);
+		// Initial state for a QueryHierarchy: no member included. 
+		assertRowsMembers();
 
+		// Inclusion of DESCENDANTS of [Time].[1997].
+		// The hierarchy is expanded, so we get full hierarchy.
+		Member root1997 = testHierarchies[0].getHierarchy().getRootMembers().get("1997");
+		Member root1998 = testHierarchies[0].getHierarchy().getRootMembers().get("1998");
+		testHierarchies[0].include(Operator.DESCENDANTS, root1997);
 		assertRowsMembers(
 				"-[Time].[1997]",
 				" -[Time].[1997].[Q1]",
@@ -445,6 +454,87 @@ public class RegressionIT {
 				"   [Time].[1997].[Q4].[10]",
 				"   [Time].[1997].[Q4].[11]",
 				"   [Time].[1997].[Q4].[12]");
+
+		
+		// Then we undrill [Time].[1997].[Q3]
+		Member m1997_Q3 = root1997.getChildMembers().get(2);
+		testAxis.undrill(m1997_Q3);
+		assertRowsMembers(
+				"-[Time].[1997]",
+				" -[Time].[1997].[Q1]",
+				"   [Time].[1997].[Q1].[1]",
+				"   [Time].[1997].[Q1].[2]",
+				"   [Time].[1997].[Q1].[3]",
+				" -[Time].[1997].[Q2]",
+				"   [Time].[1997].[Q2].[4]",
+				"   [Time].[1997].[Q2].[5]",
+				"   [Time].[1997].[Q2].[6]",
+				" +[Time].[1997].[Q3]",
+				" -[Time].[1997].[Q4]",
+				"   [Time].[1997].[Q4].[10]",
+				"   [Time].[1997].[Q4].[11]",
+				"   [Time].[1997].[Q4].[12]");
+		
+		// After removing [Time].[1997].[Q3] from the query hierarchy, its descendants show up
+		testHierarchies[0].exclude(Operator.MEMBER, m1997_Q3);
+		assertRowsMembers(
+				"-[Time].[1997]",
+				" -[Time].[1997].[Q1]",
+				"   [Time].[1997].[Q1].[1]",
+				"   [Time].[1997].[Q1].[2]",
+				"   [Time].[1997].[Q1].[3]",
+				" -[Time].[1997].[Q2]",
+				"   [Time].[1997].[Q2].[4]",
+				"   [Time].[1997].[Q2].[5]",
+				"   [Time].[1997].[Q2].[6]",
+				"   [Time].[1997].[Q3].[7]",
+				"   [Time].[1997].[Q3].[8]",
+				"   [Time].[1997].[Q3].[9]",
+				" -[Time].[1997].[Q4]",
+				"   [Time].[1997].[Q4].[10]",
+				"   [Time].[1997].[Q4].[11]",
+				"   [Time].[1997].[Q4].[12]");
+
+		// Undrill [Time].[1997].[Q2]
+		testAxis.undrill(root1997.getChildMembers().get("Q2"));
+		assertRowsMembers(
+				"-[Time].[1997]",
+				" -[Time].[1997].[Q1]",
+				"   [Time].[1997].[Q1].[1]",
+				"   [Time].[1997].[Q1].[2]",
+				"   [Time].[1997].[Q1].[3]",
+				" +[Time].[1997].[Q2]",
+				"   [Time].[1997].[Q3].[7]",
+				"   [Time].[1997].[Q3].[8]",
+				"   [Time].[1997].[Q3].[9]",
+				" -[Time].[1997].[Q4]",
+				"   [Time].[1997].[Q4].[10]",
+				"   [Time].[1997].[Q4].[11]",
+				"   [Time].[1997].[Q4].[12]");
+
+		// Undrill [Time].[1997]
+		testAxis.undrill(root1997);
+		assertRowsMembers(
+				"+[Time].[1997]");
+
+
+		// Drilling down [Time].[1997] again keeps previous undrills
+		testAxis.drill(root1997);
+		assertRowsMembers(
+				"-[Time].[1997]",
+				" -[Time].[1997].[Q1]",
+				"   [Time].[1997].[Q1].[1]",
+				"   [Time].[1997].[Q1].[2]",
+				"   [Time].[1997].[Q1].[3]",
+				" +[Time].[1997].[Q2]",
+				"   [Time].[1997].[Q3].[7]",
+				"   [Time].[1997].[Q3].[8]",
+				"   [Time].[1997].[Q3].[9]",
+				" -[Time].[1997].[Q4]",
+				"   [Time].[1997].[Q4].[10]",
+				"   [Time].[1997].[Q4].[11]",
+				"   [Time].[1997].[Q4].[12]");
+				
 	}
 	
 	
@@ -468,14 +558,16 @@ public class RegressionIT {
 						expectedMember.getMemberName(), 
 						actualMember.getUniqueName());
 				assertEquals(
+						String.format("Line %1$s: Member %2$s was expected %3$s to be a leaf", i, expectedMember.getMemberName(), expectedMember.isLeaf() ? "" : "not"),
+						expectedMember.isLeaf(), 
+						testHierarchies[j].isLeaf(actualMember));
+				if ( !expectedMember.isLeaf() ) {
+				assertEquals(
 						String.format("Line %1$s, Column %2$s: Member %3$s was expected to be %4$s drilled", i, j, 
 								expectedMember.getMemberName(), expectedMember.isDrilled() ? "" : "not"),
 						expectedMember.isDrilled(), 
 						testAxis.isDrilled(Arrays.copyOfRange(actualMembers, 0, j+1)));
-				assertEquals(
-						String.format("Line %1$s: Member %2$s was expected %3$s to be a leaf", i, expectedMember.getMemberName(), expectedMember.isLeaf() ? "" : "not"),
-						expectedMember.isLeaf(), 
-						testHierarchies[j].isLeaf(actualMember));
+				}
 				++j;
 			}
 			++i;
@@ -484,3 +576,4 @@ public class RegressionIT {
 	
 	
 }
+

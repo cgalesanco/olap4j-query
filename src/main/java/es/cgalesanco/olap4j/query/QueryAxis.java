@@ -51,7 +51,7 @@ public class QueryAxis {
 	private List<Member> sortPosition;
 	private SortOrder sortOrder;
 	private List<Property> properties;
-	private List<Hierarchy> expandeHierarchies;
+	private List<HierarchyExpander> expanders;
 
 	/**
 	 * Creates a {@link QueryAxis}.
@@ -65,8 +65,8 @@ public class QueryAxis {
 		this.axis = location;
 		this.query = query;
 		hierarchies = new ArrayList<QueryHierarchy>();
+		expanders = new ArrayList<HierarchyExpander>();
 		drillTree = new DrillTree();
-		expandeHierarchies = new ArrayList<Hierarchy>();
 	}
 
 	/**
@@ -143,6 +143,7 @@ public class QueryAxis {
 
 		prevAxis.doRemove(hierarchy);
 		hierarchies.add(hierarchy);
+		expanders.add(new HierarchyExpander());
 		hierarchy.setAxis(this);
 		clearSort();
 
@@ -198,7 +199,9 @@ public class QueryAxis {
 
 		drillTree.prune(index - 1);
 		QueryHierarchy h = hierarchies.remove(index);
+		HierarchyExpander e = expanders.remove(index);
 		hierarchies.add(index - 1, h);
+		expanders.add(index-1, e);
 	}
 
 	/**
@@ -218,7 +221,9 @@ public class QueryAxis {
 
 		drillTree.prune(index);
 		QueryHierarchy h = hierarchies.remove(index);
+		HierarchyExpander e = expanders.remove(index);
 		hierarchies.add(index + 1, h);
+		expanders.add(index+1, e);
 	}
 
 	/**
@@ -240,7 +245,10 @@ public class QueryAxis {
 	 */
 	public void drill(Member... drilledMember) throws IllegalArgumentException {
 		checkDrillStructure(drilledMember);
-		drillTree.add(drilledMember);
+		if ( expanders.get(drilledMember.length-1).isHierarchyExpanded() )
+			drillTree.remove(drilledMember);
+		else
+			drillTree.add(drilledMember);
 	}
 
 	/**
@@ -262,15 +270,10 @@ public class QueryAxis {
 	 */
 	public void undrill(Member... position) throws IllegalArgumentException {
 		checkDrillStructure(position);
-		drillTree.remove(position);
-	}
-	
-	public void expand(Hierarchy h) {
-		expandeHierarchies.add(h);
-	}
-	
-	public boolean isExpanded(Hierarchy h) {
-		return expandeHierarchies.contains(h);
+		if ( expanders.get(position.length-1).isHierarchyExpanded() )
+			drillTree.add(position);
+		else
+			drillTree.remove(position);
 	}
 
 	/**
@@ -286,7 +289,12 @@ public class QueryAxis {
 	 */
 	public boolean isDrilled(Member... position) {
 		checkDrillStructure(position);
-		return drillTree.isDrilled(position);
+		boolean hierachyExpanded = expanders.get(position.length-1).isHierarchyExpanded();
+		if ( drillTree.isDrilled(position) ) {
+			return !hierachyExpanded;
+		}
+		
+		return hierachyExpanded;
 	}
 
 	/**
@@ -304,6 +312,34 @@ public class QueryAxis {
 		return lister.getList();
 	}
 
+	public void expandHierarchy(QueryHierarchy h) {
+		int pos = hierarchies.indexOf(h);
+		if ( pos < 0 )
+			return;
+		
+		expanders.get(pos).expandHierarchy();
+		if ( drillTree != null )
+			drillTree.clearLevel(pos);
+	}
+	
+	public void collapseHierarchy(QueryHierarchy h) {
+		int pos = hierarchies.indexOf(h);
+		if ( pos < 0 )
+			return;
+		
+		expanders.get(pos).collapseHierarchy();
+		if ( drillTree != null )
+			drillTree.clearLevel(pos);
+	}
+	
+	public boolean isExpanded(QueryHierarchy h) {
+		int pos = hierarchies.indexOf(h);
+		if ( pos < 0 )
+			return false;
+		
+		return expanders.get(pos).isHierarchyExpanded();
+	}
+	
 	/**
 	 * <P>
 	 * Sorts the positions of this axis by the value of given cell coordinates
@@ -397,7 +433,7 @@ public class QueryAxis {
 		if (axis != Axis.FILTER) {
 			if (hierarchies.isEmpty())
 				return null;
-			ParseTreeNode axisExpression = drillTree.toOlap4j(this);
+			ParseTreeNode axisExpression = drillTree.toOlap4j(hierarchies, expanders);
 			if (sortPosition != null) {
 				axisExpression = Mdx.order(axisExpression, sortPosition,
 						sortOrder);
@@ -473,6 +509,7 @@ public class QueryAxis {
 		if (position >= 0) {
 			drillTree.prune(position);
 			hierarchies.remove(position);
+			expanders.remove(position);
 		}
 	}
 

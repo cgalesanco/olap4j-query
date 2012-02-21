@@ -8,10 +8,8 @@ import java.util.Stack;
 
 import org.olap4j.Axis;
 import org.olap4j.OlapException;
-import org.olap4j.mdx.CallNode;
 import org.olap4j.mdx.IdentifierSegment;
 import org.olap4j.mdx.ParseTreeNode;
-import org.olap4j.mdx.Syntax;
 import org.olap4j.metadata.Hierarchy;
 import org.olap4j.metadata.Member;
 
@@ -390,12 +388,11 @@ public class QueryHierarchy {
 	 * 
 	 * @param drills
 	 *            list of drilled members.
-	 * @param expanded
-	 *            TODO
 	 * @return the parse tree expressing this hierarchy set of members for the
 	 *         given drill list.
 	 */
-	public ParseTreeNode toOlap4j(List<Member> drills, boolean expanded) {
+	public ParseTreeNode toOlap4j(HierarchyExpander expander,
+			List<Member> drills) {
 		if (getAxis().getLocation() == Axis.FILTER)
 			return toOlap4jFilter();
 
@@ -403,7 +400,7 @@ public class QueryHierarchy {
 		if (drills != null)
 			drillList.addAll(drills);
 
-		return toOlap4jQuery(drillList, expanded);
+		return toOlap4jQuery(expander, drillList);
 	}
 
 	/**
@@ -415,12 +412,12 @@ public class QueryHierarchy {
 	 * For filter hierarchies returns the filter expression for this hierarchy
 	 * </p>
 	 * 
-	 * @see #toOlap4j(List, boolean)
+	 * @see #toOlap4j(List)
 	 * @return the parse tree expression for the root members of this query
 	 *         hierarchy.
 	 */
 	public ParseTreeNode toOlap4j() {
-		return toOlap4j(null, false);
+		return toOlap4j(new HierarchyExpander(), null);
 	}
 
 	/**
@@ -813,34 +810,26 @@ public class QueryHierarchy {
 	}
 
 	/**
-	 * Implementation of {@code #toOlap4j()} for query axes.
-	 * 
-	 * @param expanded
-	 *            TODO
+	 * Implementation of {@link #toOlap4j()} for query axes.
 	 */
-	private ParseTreeNode toOlap4jQuery(List<Member> drillList, boolean expanded) {
+	private ParseTreeNode toOlap4jQuery(HierarchyExpander expander,
+			List<Member> drillList) {
 		SelectionTree.VisitingInfo visitInfo = new SelectionTree.VisitingInfo(
 				selectionTree, null, Sign.EXCLUDE);
-		UnionBuilder roots = new UnionBuilder();
-		UnionBuilder drillExpansion = new UnionBuilder();
-		UnionBuilder exceptList = new UnionBuilder();
+		AxisExpression expression = new AxisExpression();
 		for (SelectionTree root : selectionTree.getOverridingChildren()) {
 			VisitingInfo rootVisit = visitInfo.visitChild(root);
-			toOlap4jQuery(true, rootVisit, drillList, roots, drillExpansion,
-					exceptList, expanded);
+			toOlap4jQuery(false, rootVisit, expander, drillList, expression);
 		}
 
-		if (roots.getUnionNode() == null)
-			return new CallNode(null, "{}", Syntax.Braces);
-		return Mdx.except(Mdx.drillDown(roots, drillExpansion),
-				exceptList.getUnionNode());
+		return expression.getExpression();
 	}
 
 	/**
 	 * Immersion method to recursively implement {@link #toOlap4j()} for query
 	 * axes.
 	 * 
-	 * @param dangling
+	 * @param alreadyIncluded
 	 *            indicates that this member has not been included because of a
 	 *            <code>DrillDownMember</code>
 	 * @param current
@@ -854,292 +843,114 @@ public class QueryHierarchy {
 	 * @param exceptList
 	 *            union expression for the members to be removed after the
 	 *            drill.
-	 * @param expanded
-	 *            TODO
 	 */
-	private void toOlap4jQuery(boolean dangling, VisitingInfo current,
-			List<Member> drillList, UnionBuilder roots,
-			UnionBuilder drillExpansion, UnionBuilder exceptList,
-			boolean expanded) {
+	private void toOlap4jQuery(boolean alreadyIncluded, VisitingInfo current,
+			HierarchyExpander expander, List<Member> drillList,
+			AxisExpression expression) {
 		Member currentMember = current.getMember();
 		SelectionTree currentNode = current.getNode();
 		Sign currentSign = current.getEffectiveSign(Operator.MEMBER);
+
+		// If this member is included, and is not drilled (nor expanded),
+		// include it in the axis and ends the visit.
+		if (currentSign == Sign.INCLUDE) {
+			if (!expander.isHierarchyExpanded()) {
+				if (!drillList.remove(currentMember)
+						&& !expander.isLevelExpanded(currentMember.getDepth())) {
+					if (!alreadyIncluded)
+						expression.include(Mdx.member(currentMember));
+					return;
+				}
+			} else {
+				if (drillList.remove(currentMember)) {
+					if (!alreadyIncluded)
+						expression.include(Mdx.member(currentMember));
+					return;
+				}
+			}
+		}
+
 		Sign childrenSign = current.getEffectiveSign(Operator.CHILDREN);
 		Sign descendantsSign = current.getEffectiveSign(Operator.DESCENDANTS);
-		List<VisitingInfo> overridedNodes = new ArrayList<VisitingInfo>();
 
-		if ( currentSign == Sign.EXCLUDE && childrenSign == Sign.INCLUDE && descendantsSign == Sign.EXCLUDE) {
-			UnionBuilder excludedChildren = new UnionBuilder();
-			for(SelectionTree childNode : currentNode.getOverridingChildren()) {
-				VisitingInfo childVisit = current.visitChild(childNode);
-				Sign childSign = childVisit.getEffectiveSign(Operator.MEMBER);
-				overridedNodes.add(childVisit);
-				if ( childSign == Sign.EXCLUDE )
-					excludedChildren.add(Mdx.member(childVisit.getMember()));
-			}
-			
-			if ( excludedChildren.isEmpty() ) {
-				if ( !dangling )
-					drillExpansion.add(Mdx.member(currentMember));
-				else
-					roots.add(Mdx.children(currentMember));
-			} else
-				roots.add(Mdx.except(Mdx.children(currentMember), excludedChildren.getUnionNode()));
-			
-			for(VisitingInfo childVisit : overridedNodes) {
-				toOlap4jQuery(childVisit.getEffectiveSign(Operator.MEMBER) == Sign.EXCLUDE, childVisit, drillList, roots, drillExpansion, exceptList, expanded);
-			}
-			return;
-		} else if (currentSign == Sign.EXCLUDE && childrenSign == Sign.EXCLUDE && descendantsSign == Sign.INCLUDE) {
-			List<Member> overridedMembers = new ArrayList<Member>();
-			UnionBuilder overridedChildren = new UnionBuilder();
-			for(SelectionTree childNode : currentNode.getOverridingChildren()) {
-				overridedChildren.add(Mdx.member(currentMember));
-				overridedMembers.add(childNode.getMember());
-			}
-
-			if ( !overridedMembers.isEmpty() ) {
-				roots.add(
-						Mdx.descendants(
-								Mdx.except(Mdx.children(currentMember), UnionBuilder.fromMembers(overridedMembers)),
-								1,
-								expanded ? "SELF_AND_AFTER" : null)
-							);
-				
-			} else {
-				roots.add(
-						Mdx.descendants(
-								Mdx.member(currentMember),
-								2,
-								expanded ? "SELF_AND_AFTER" : null)
-							);
-			}
-			
-			for(VisitingInfo childVisit : overridedNodes) {
-				toOlap4jQuery(childVisit.getEffectiveSign(Operator.MEMBER) == Sign.EXCLUDE, 
-						childVisit, drillList, roots, drillExpansion, exceptList, expanded);
-			}
-			return;
-		} else if (currentSign == Sign.EXCLUDE && childrenSign == Sign.INCLUDE && descendantsSign == Sign.INCLUDE) {
-			List<Member> overridedMembers = new ArrayList<Member>();
-			UnionBuilder overridedChildren = new UnionBuilder();
-			for(SelectionTree childNode : currentNode.getOverridingChildren()) {
-				overridedChildren.add(Mdx.member(currentMember));
-				overridedMembers.add(childNode.getMember());
-			}
-
-			if ( !overridedMembers.isEmpty() ) {
-				if ( !expanded ) {
-					roots.add(Mdx.except(Mdx.children(currentMember), UnionBuilder.fromMembers(overridedMembers)));
-				} else
-					roots.add(
-						Mdx.descendants(
-								Mdx.except(Mdx.children(currentMember), UnionBuilder.fromMembers(overridedMembers)),
-								0,
-								"SELF_AND_AFTER")
-							);
-			} else {
-				if ( !expanded )
-					roots.add(Mdx.children(currentMember));
-				else {
-					roots.add(
-						Mdx.descendants(
-								Mdx.member(currentMember),
-								1,
-								"SELF_AND_AFTER")
-							);
-				}
-			}
-			
-			for(VisitingInfo childVisit : overridedNodes) {
-				toOlap4jQuery(childVisit.getEffectiveSign(Operator.MEMBER) == Sign.EXCLUDE, 
-						childVisit, drillList, roots, drillExpansion, exceptList, expanded);
-			}
-			return;
-		} if ( currentSign == Sign.EXCLUDE && childrenSign == Sign.INCLUDE && descendantsSign == Sign.EXCLUDE) {
-			UnionBuilder excludedChildren = new UnionBuilder();
-			for(SelectionTree childNode : currentNode.getOverridingChildren()) {
-				VisitingInfo childVisit = current.visitChild(childNode);
-				Sign childSign = childVisit.getEffectiveSign(Operator.MEMBER);
-				overridedNodes.add(childVisit);
-				if ( childSign == Sign.EXCLUDE )
-					excludedChildren.add(Mdx.member(childVisit.getMember()));
-			}
-			
-			if ( excludedChildren.isEmpty() ) {
-				if ( !dangling )
-					drillExpansion.add(Mdx.member(currentMember));
-				else
-					roots.add(Mdx.children(currentMember));
-			} else
-				roots.add(Mdx.except(Mdx.children(currentMember), excludedChildren.getUnionNode()));
-			
-			for(VisitingInfo childVisit : overridedNodes) {
-				toOlap4jQuery(childVisit.getEffectiveSign(Operator.MEMBER) == Sign.EXCLUDE, childVisit, drillList, roots, drillExpansion, exceptList, expanded);
-			}
-			return;
-		} else if (currentSign == Sign.EXCLUDE && childrenSign == Sign.EXCLUDE && descendantsSign == Sign.EXCLUDE) {
-			for(SelectionTree childNode : currentNode.getOverridingChildren()) {
-				VisitingInfo childVisit = current.visitChild(childNode);
-				toOlap4jQuery(childVisit.getEffectiveSign(Operator.MEMBER) == Sign.EXCLUDE, 
-						childVisit, drillList, roots, drillExpansion, exceptList, expanded);
-			}
-			return;
-		} else if (currentSign == Sign.INCLUDE && childrenSign == Sign.EXCLUDE && descendantsSign == Sign.EXCLUDE) {
-			if ( dangling )
-				roots.add(Mdx.member(currentMember));
-			
-			if ( !drillList.remove(currentMember) && !expanded ) {
-				return;
-			}
-			
-			if ( !expanded ) {
-				drillExpansion.add(Mdx.member(currentMember));
-				for(SelectionTree childNode : currentNode.getOverridingChildren()) {
-					VisitingInfo childVisit = current.visitChild(childNode);
-					Sign childSign = childVisit.getEffectiveSign(Operator.MEMBER); 
-					toOlap4jQuery(childSign == Sign.EXCLUDE, 
-							childVisit, drillList, roots, drillExpansion, exceptList, expanded);
-				}
-			}
-			
-		}
-		
+		// Include or exclude current member if necessary
 		if (currentSign == Sign.INCLUDE) {
-			if (dangling)
-				roots.add(Mdx.member(currentMember));
-			
-			// This member is included. 
-			// If it's not drilled nor expanded, ends this visit branch, else remove it from the drillList
-			if (!drillList.remove(currentMember) && !expanded) {
-				return;
-			}
-		}
-
-		List<Member> overrided = new ArrayList<Member>();
-		if (childrenSign == Sign.INCLUDE) {
-			// As children are included by default, drill on this member
-			if ( !expanded ) {
-				if (currentSign == Sign.INCLUDE ) {
-					drillExpansion.add(Mdx.member(currentMember));
-				}else {
-					roots.add(Mdx.children(currentMember));
-				}
-			}
-
-			for (SelectionTree childNode : currentNode.getOverridingChildren()) {
-				VisitingInfo childVisit = current.visitChild(childNode);
-				overrided.add(childVisit.getMember());
-				Sign childMemberSign = childVisit
-						.getEffectiveSign(Operator.MEMBER);
-				if (childMemberSign == Sign.EXCLUDE) {
-					if ( !expanded )
-						exceptList.add(Mdx.member(childNode.getMember()));
-					drillList.remove(childNode.getMember());
-				}
-				toOlap4jQuery(childMemberSign == Sign.EXCLUDE, childVisit,
-						drillList, roots, drillExpansion, exceptList, expanded);
-			}
-
-			// Children not in the overridingChildren set ar included,
-			// so we should apply any drill for children (or descendants if
-			// descendants are included) of this node.
-			if (descendantsSign == Sign.INCLUDE) {
-				if (!expanded) {
-					applyDrills(currentMember, drillList, drillExpansion);
-				} else {
-					if (overrided.isEmpty()) {
-						roots.add(Mdx.descendants(Mdx.member(currentMember), 0, "AFTER"));
-					} else {
-						roots.add(Mdx.descendants(Mdx.except(
-								Mdx.children(currentMember),
-								UnionBuilder.fromMembers(overrided)), 0,
-								"SELF_AND_AFTER"));
-					}
-				}
-			} 
+			if (!alreadyIncluded)
+				expression.include(Mdx.member(currentMember));
 		} else {
-			for (SelectionTree childNode : currentNode.getOverridingChildren()) {
-				VisitingInfo childVisit = current.visitChild(childNode);
-				overrided.add(childVisit.getMember());
-				Sign childMemberSign = childVisit
-						.getEffectiveSign(Operator.MEMBER);
-				if (childMemberSign == Sign.EXCLUDE)
-					drillList.remove(childVisit.getMember());
-				toOlap4jQuery(true, childVisit, drillList, roots,
-						drillExpansion, exceptList, expanded);
-			}
+			if (alreadyIncluded)
+				expression.exclude(Mdx.member(currentMember));
+		}
 
-			if (descendantsSign == Sign.INCLUDE) {
-				if (!expanded) {
-					if (overrided.isEmpty())
-						roots.add(Mdx.descendants(Mdx.member(currentMember), 2));
+		// Process overriding nodes in the inclusion/exclusion tree
+		List<Member> overridedMembers = new ArrayList<Member>();
+		for (SelectionTree overridedChild : currentNode.getOverridingChildren()) {
+			VisitingInfo childVisit = current.visitChild(overridedChild);
+			overridedMembers.add(overridedChild.getMember());
+			toOlap4jQuery(childrenSign == Sign.INCLUDE && (!expander.isHierarchyExpanded() || descendantsSign == Sign.EXCLUDE), childVisit, expander,
+					drillList, expression);
+		}
+
+		// If descendants are included, expand non-overriding nodes in the
+		// inclusion/exclusion tree.
+		if (descendantsSign == Sign.INCLUDE) {
+			// Childrens are excluded, so we have to add grandchildren to the
+			// axis expression
+			if (childrenSign == Sign.EXCLUDE) {
+				GrandchildrenSet expansionRoots = new GrandchildrenSet(currentMember,
+						overridedMembers);
+				if (overridedMembers.isEmpty()) {
+					if (expander.isHierarchyExpanded())
+						expression
+								.include(Mdx.descendants(
+										Mdx.member(currentMember), 2,
+										"SELF_AND_AFTER"));
 					else {
-						roots.add(Mdx.descendants(Mdx.except(
+						expression.include(Mdx.descendants(
+								Mdx.member(currentMember), 2));
+					}
+				} else {
+					if (expander.isHierarchyExpanded()) {
+						expression.include(Mdx.descendants(Mdx.except(
 								Mdx.children(currentMember),
-								UnionBuilder.fromMembers(overrided)), 1));
-					}
-
-					List<Member> grandsonDrillCandidates = new ArrayList<Member>();
-					for (Member m : drillList) {
-						Member drillParent = m.getParentMember();
-						if (drillParent != null
-								&& currentMember.equals(drillParent
-										.getParentMember()))
-							grandsonDrillCandidates.add(drillParent);
-					}
-
-					for (Member m : grandsonDrillCandidates) {
-						applyDrills(m, drillList, drillExpansion);
-					}
-				}  else {
-					if ( overrided.isEmpty() ) {
-						roots.add(Mdx.descendants(
-								Mdx.member(currentMember)
-								, 1, "SELF_AND_AFTER"));
+								UnionBuilder.fromMembers(overridedMembers)), 1,
+								"SELF_AND_AFTER"));
 					} else {
-						roots.add(Mdx.descendants(
-								Mdx.except(Mdx.children(currentMember), UnionBuilder.fromMembers(overrided))
-								, 1, "SELF_AND_AFTER"));
+						expression.include(expansionRoots.getMdx());
 					}
 				}
-			} 
-		}
-	}
-
-	/**
-	 * <p>
-	 * Helper function to recursively apply drills for descendants of a member.
-	 * </p>
-	 * <p>
-	 * Recursively search for descendants of {@code member} included in the list
-	 * of drills. Adds them to {@code drillExpansion} and removes them from
-	 * {@code drillList},
-	 * </p>
-	 * 
-	 * @param member
-	 *            initial member
-	 * @param drillList
-	 *            list of drills to be applied.
-	 * @param drillExpansion
-	 *            union expression with the member to be drilled.
-	 */
-	private void applyDrills(Member member, List<Member> drillList,
-			UnionBuilder drillExpansion) {
-		Stack<Member> pending = new Stack<Member>();
-		pending.push(member);
-		while (!pending.isEmpty()) {
-			Member currentMember = pending.pop();
-			Iterator<Member> itMember = drillList.iterator();
-			while (itMember.hasNext()) {
-				Member m = itMember.next();
-				if (currentMember.equals(m.getParentMember())) {
-					drillExpansion.add(Mdx.member(m));
-					itMember.remove();
-					pending.push(m);
+				expander.expand(expansionRoots, drillList, expression);
+			} else {
+				InverseMemberSet expansionRoots = new InverseMemberSet(
+						currentMember, overridedMembers);
+				if (overridedMembers.isEmpty()
+						&& expander.isHierarchyExpanded()) {
+					expression.include(Mdx.descendants(
+							Mdx.member(currentMember), 1, "SELF_AND_AFTER"));
+				} else {
+					if (expander.isHierarchyExpanded()) {
+						expression.include(Mdx.descendants(Mdx.except(
+								Mdx.children(currentMember),
+								UnionBuilder.fromMembers(overridedMembers)), 0,
+								"SELF_AND_AFTER"));
+					} else {
+						if (currentSign == Sign.INCLUDE) {
+							expression.drill(Mdx.member(currentMember));
+						} else {
+							expression.include(Mdx.children(currentMember));
+						}
+					}
 				}
+				expander.expand(expansionRoots, drillList, expression);
+			}
+		} else if (childrenSign == Sign.INCLUDE) {
+			// Include children members
+			if (currentSign == Sign.INCLUDE) {
+				expression.drill(Mdx.member(currentMember));
+			} else {
+				expression.include(Mdx.children(currentMember));
 			}
 		}
-	}
 
+	}
 }
