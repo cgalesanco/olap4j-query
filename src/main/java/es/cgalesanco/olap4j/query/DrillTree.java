@@ -135,7 +135,7 @@ class DrillTree {
 			xJoin.join(dimensions.get(drillDepth).toOlap4j(expanders.get(drillDepth), drills));
 
 			for (int i = drillDepth + 1; i < dimensions.size(); ++i) {
-				xJoin.join(dimensions.get(i).toOlap4j());
+				xJoin.join(dimensions.get(i).toOlap4j(expanders.get(i), null));
 			}
 
 			union.add(xJoin.expression);
