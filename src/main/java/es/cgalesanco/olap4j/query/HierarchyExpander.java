@@ -144,4 +144,33 @@ class HierarchyExpander {
 			}
 		}
 	}
+
+	public boolean isDrilled(Member member, List<Member> drillList) {
+		if ( member == null )
+			return true;
+		if ( isFullyExpanded ) {
+			if ( drillList == null )
+				return true;
+			Member ancestor = member;
+			while( ancestor != null ) {
+				if ( drillList.contains(ancestor) )
+					return false;
+				
+				ancestor = ancestor.getParentMember();
+			}
+			return true;
+		}else {
+			if ( drillList == null )
+				return false;
+			
+			Member ancestor = member;
+			while( ancestor != null ) {
+				if ( !drillList.contains(ancestor) )
+					return false;
+				
+				ancestor = ancestor.getParentMember();
+			}
+			return true;
+		}
+	}
 }
