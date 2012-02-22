@@ -8,11 +8,11 @@ import org.olap4j.metadata.Member;
 import es.cgalesanco.olap4j.query.mdx.Mdx;
 import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
-class InverseMemberSet implements MemberSet {
+class ChildrenMemberSet implements MemberSet {
 	private Member parent;
 	private List<Member> excludedMembers;
 
-	public InverseMemberSet(Member parent, List<Member> excludedChildren) {
+	public ChildrenMemberSet(Member parent, List<Member> excludedChildren) {
 		this.parent = parent;
 		this.excludedMembers = excludedChildren;
 	}

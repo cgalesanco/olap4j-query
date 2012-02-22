@@ -224,13 +224,25 @@ public class QueryAxisTest {
 		Member h2Root = h2.getHierarchy().getRootMembers().get(0);
 		h2.include(Operator.DESCENDANTS, h2Root);
 
+		currentAxis.drill(h1Root);
 		currentAxis.drill(h1Child, h2Root);
 
 		AxisNode node = currentAxis.toOlap4j();
 
 		assertMdx(
 				String.format(
-						"Hierarchize(Union((%1$s, %2$s), CrossJoin(%3$s, DrilldownMember({%2$s}, {%2$s}, RECURSIVE))))",
+						"Hierarchize("+
+							"Union("+
+								"CrossJoin(" +
+									"Except(DrilldownMember({%1$s}, {%1$s}, RECURSIVE), {%3$s}), " +
+									"%2$s" +
+								"), " +
+								"CrossJoin(" +
+									"%3$s, " +
+									"DrilldownMember({%2$s}, {%2$s}, RECURSIVE)" +
+								")" +
+							")" +
+						")",
 						h1Root, h2Root, h1Child), node.getExpression());
 	}
 
@@ -278,7 +290,7 @@ public class QueryAxisTest {
 
 		AxisNode node = currentAxis.toOlap4j();
 
-		assertMdx(String.format("(%1$s, %2$s)", h1Root, h2Root),
+		assertMdx(String.format("Hierarchize((%1$s, %2$s))", h1Root, h2Root),
 				node.getExpression());
 	}
 
