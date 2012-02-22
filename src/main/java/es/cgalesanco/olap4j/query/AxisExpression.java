@@ -3,6 +3,7 @@ package es.cgalesanco.olap4j.query;
 import org.olap4j.mdx.CallNode;
 import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.mdx.Syntax;
+import org.olap4j.metadata.Member;
 
 import es.cgalesanco.olap4j.query.mdx.Mdx;
 import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
@@ -24,8 +25,16 @@ class AxisExpression {
 		roots.add(e);
 	}
 	
+	public void include(Member m) {
+		roots.add(Mdx.member(m));
+	}
+	
 	public void exclude(ParseTreeNode e) {
 		exclude.add(e);
+	}
+	
+	public void exclude(Member m) {
+		exclude.add(Mdx.member(m));
 	}
 	
 	public void drill(ParseTreeNode e) {

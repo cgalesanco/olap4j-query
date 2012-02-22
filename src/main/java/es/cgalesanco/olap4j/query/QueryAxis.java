@@ -458,8 +458,9 @@ public class QueryAxis {
 		if (axis != Axis.FILTER) {
 			if (hierarchies.isEmpty())
 				return null;
-			ParseTreeNode axisExpression = drillTree.toOlap4j(hierarchies,
-					expanders);
+			ParseTreeNode axisExpression = 
+					Mdx.hierarchize(drillTree.toOlap4j(hierarchies,
+					expanders));
 			if (sortPosition != null) {
 				axisExpression = Mdx.order(axisExpression, sortPosition,
 						sortOrder);

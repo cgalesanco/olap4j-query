@@ -4,13 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.olap4j.OlapException;
-import org.olap4j.mdx.CallNode;
-import org.olap4j.mdx.MemberNode;
 import org.olap4j.mdx.ParseTreeNode;
-import org.olap4j.mdx.Syntax;
 import org.olap4j.metadata.Member;
 
 import es.cgalesanco.olap4j.query.mdx.CrossJoinBuilder;
+import es.cgalesanco.olap4j.query.mdx.Mdx;
 import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
 /**
@@ -82,7 +80,7 @@ class DrillTree {
 		}
 
 		public void removeDrill(Member m) {
-			if ( drills != null )
+			if (drills != null)
 				drills.remove(m);
 		}
 
@@ -96,55 +94,6 @@ class DrillTree {
 
 		public void removeDrills() {
 			drills = null;
-		}
-	}
-
-	private static class ToOlap4j implements Visitor {
-
-		private final List<QueryHierarchy> dimensions;
-		private final List<HierarchyExpander> expanders;
-		private final UnionBuilder union;
-
-		public ToOlap4j(List<QueryHierarchy> dimensions, List<HierarchyExpander> expanders) {
-			this.dimensions = dimensions;
-			this.expanders = expanders;
-			union = new UnionBuilder();
-		}
-
-		public ParseTreeNode getResult() {
-			ParseTreeNode u = union.getUnionNode();
-			if (!(u instanceof CallNode)) {
-				return u;
-			}
-			final CallNode call = (CallNode) u;
-			if (call.getSyntax() != Syntax.Function)
-				return u;
-			return new CallNode(null, "Hierarchize", Syntax.Function, u);
-		}
-
-		@Override
-		public void visit(List<Member> parents, List<Member> drills)
-				throws OlapException {
-			CrossJoinBuilder xJoin = new CrossJoinBuilder();
-			int drillDepth = parents.size();
-
-			for (int i = 0; i < drillDepth; ++i) {
-				xJoin.join(new MemberNode(null, parents.get(i)));
-			}
-
-			xJoin.join(dimensions.get(drillDepth).toOlap4j(expanders.get(drillDepth), drills));
-
-			for (int i = drillDepth + 1; i < dimensions.size(); ++i) {
-				xJoin.join(dimensions.get(i).toOlap4j(expanders.get(i), null));
-			}
-
-			union.add(xJoin.expression);
-		}
-
-		@Override
-		public boolean shouldVisitChild(int hierarchyPos, Member child) {
-			QueryHierarchy queryHierarchy = dimensions.get(hierarchyPos);
-			return queryHierarchy.isIncluded(child);
 		}
 	}
 
@@ -228,22 +177,21 @@ class DrillTree {
 
 		return current.isDrilled(position[drillDepth]);
 	}
-	
+
 	public void clearLevel(final int level) {
-		if ( root != null )
-		clearLevel(0, root, level);
+		if (root != null)
+			clearLevel(0, root, level);
 	}
 
 	private void clearLevel(int currentLevel, Node current, int targetLevel) {
-		if ( currentLevel > targetLevel )
+		if (currentLevel > targetLevel)
 			return;
-		if ( currentLevel == targetLevel ) {
-			if ( current.drills != null )
+		if (currentLevel == targetLevel) {
+			if (current.drills != null)
 				current.drills.clear();
-		}
-		else  if ( current.hasChildren() ) {
-			for(Node child : current.getChildren()) {
-				clearLevel(currentLevel+1, child, targetLevel);
+		} else if (current.hasChildren()) {
+			for (Node child : current.getChildren()) {
+				clearLevel(currentLevel + 1, child, targetLevel);
 			}
 		}
 	}
@@ -253,11 +201,53 @@ class DrillTree {
 		visit(parents, root, visitor);
 	}
 
-	public ParseTreeNode toOlap4j(List<QueryHierarchy> dimensions, List<HierarchyExpander> expanders)
-			throws OlapException {
-		ToOlap4j visitor = new ToOlap4j(dimensions, expanders);
-		visit(visitor);
-		return visitor.getResult();
+	public ParseTreeNode toOlap4j(List<QueryHierarchy> dimensions,
+			List<HierarchyExpander> expanders) {
+		UnionBuilder expression = new UnionBuilder();
+		toOlap4j(expression, root, null, 0, dimensions, expanders);
+		return expression.getUnionNode();
+	}
+
+	private void toOlap4j(UnionBuilder expression, Node current,
+			ParseTreeNode partialExpression, int level,
+			List<QueryHierarchy> dimensions, List<HierarchyExpander> expanders) {
+		
+		HierarchyExpander expander = expanders.get(level);
+		QueryHierarchy h = dimensions.get(level);
+
+		// Creates a list of children to be processed
+		List<Member> childrenMembers = new ArrayList<Member>();
+		if (current.hasChildren()) {
+			for (Node child : current.children) {
+				if (!h.isIncluded(child.getMember()) || 
+					!expander.isDrilled(child.getMember().getParentMember(), current.drills))
+					continue;
+			
+				childrenMembers.add(child.getMember());
+			}
+		}
+
+		// Generates the join of this query hierarchy, appling the drills and removing
+		// any member involved in a larger drill position.
+		CrossJoinBuilder xJoin = new CrossJoinBuilder();
+		xJoin.join(partialExpression);
+		xJoin.join(Mdx.except(h.toOlap4j(expander, current.drills),
+				UnionBuilder.fromMembers(childrenMembers)));
+		for (int n = level + 1; n < dimensions.size(); ++n) {
+			HierarchyExpander nextExp = expanders.get(n);
+			QueryHierarchy nh = dimensions.get(n);
+			xJoin.join(nh.toOlap4j(nextExp, null));
+		}
+		expression.add(xJoin.getJoinNode());
+
+		// Recursively generates expression for larger drill positions.
+		for (Member child : childrenMembers) {
+			CrossJoinBuilder x = new CrossJoinBuilder();
+			x.join(partialExpression);
+			x.join(Mdx.member(child));
+			toOlap4j(expression, current.getChild(child), x.getJoinNode(),
+					level + 1, dimensions, expanders);
+		}
 	}
 
 	private void prune(Node n, int level) {
@@ -291,4 +281,3 @@ class DrillTree {
 	}
 
 }
-

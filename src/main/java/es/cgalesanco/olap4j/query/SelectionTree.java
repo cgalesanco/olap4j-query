@@ -99,6 +99,18 @@ class SelectionTree {
 
 			return node.getStatus().getEffectiveSign(op, defaultSign);
 		}
+		
+		public boolean isMemberIncluded() {
+			return getEffectiveSign(Operator.MEMBER) == Sign.INCLUDE;
+		}
+		
+		public boolean areChildrenIncluded() {
+			return getEffectiveSign(Operator.CHILDREN) == Sign.INCLUDE;
+		}
+		
+		public boolean areDescendantsIncluded() {
+			return getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE;
+		}
 
 		/**
 		 * Generates the VisitingInfo instance for the given child of the

@@ -924,7 +924,7 @@ public class QueryHierarchy {
 				}
 				expander.expand(expansionRoots, drillList, expression);
 			} else {
-				InverseMemberSet expansionRoots = new InverseMemberSet(
+				ChildrenMemberSet expansionRoots = new ChildrenMemberSet(
 						currentMember, overridedMembers);
 				if (overridedMembers.isEmpty()
 						&& expander.isHierarchyExpanded()) {
@@ -955,5 +955,75 @@ public class QueryHierarchy {
 			}
 		}
 
+	}
+
+	/**
+	 * Recursively generates the set expression for a Query Hierarchy.
+	 * 
+	 * @param current
+	 *            currently visited node
+	 * @param expander
+	 *            helper object to execute drills/expansions
+	 * @param drillList
+	 *            members to drill/undrill
+	 * @param expression
+	 *            generated expression
+	 */
+	@SuppressWarnings("unused")
+	private void toOlap4jQueryDidactic(VisitingInfo current,
+			HierarchyExpander expander, List<Member> drillList,
+			AxisExpression expression) {
+		boolean isMemberIncluded = 
+				current.getEffectiveSign(Operator.MEMBER) == Sign.INCLUDE;
+		boolean areChildrenIncluded = 
+				current.getEffectiveSign(Operator.CHILDREN) == Sign.INCLUDE;
+		boolean areDescendantsIncluded = 
+				current.getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE;
+
+		// Processes current member, including or excluding it from the
+		// expression as necessary.
+		Member currentMember = current.getMember();
+		if (isMemberIncluded) {
+			expression.include(currentMember);
+			if (expander.isDrilled(currentMember, drillList)) {
+				// Current member is included in the hierarchy but collapsed.
+				// Ends this visit as we should not include any descendant.
+				return;
+			}
+		}
+
+		// Recursively calls toOlap4jQueryDidactic on overrided children
+		List<Member> overridedChildren = new ArrayList<Member>();
+		for (SelectionTree overridedChild : current.getNode()
+												.getOverridingChildren()) {
+			overridedChildren.add(overridedChild.getMember());
+
+			VisitingInfo childVisit = current.visitChild(overridedChild);
+			toOlap4jQueryDidactic(
+					childVisit, 
+					expander, 
+					drillList, 
+					expression);
+		}
+
+		if (areDescendantsIncluded) {
+			// Expand/undrill descendants
+			MemberSet expansionBase;
+			if (areChildrenIncluded) {
+				expansionBase = new ChildrenMemberSet(currentMember,
+						overridedChildren);
+			} else {
+				expansionBase = new GrandchildrenSet(currentMember,
+						overridedChildren);
+			}
+			expander.expand(expansionBase, drillList, expression);
+		} else {
+			// Include children if necessary
+			if (areChildrenIncluded) {
+				MemberSet nonOverridingChildren 
+					= new ChildrenMemberSet(currentMember, overridedChildren);
+				expression.include(nonOverridingChildren.getMdx());
+			}
+		}
 	}
 }
