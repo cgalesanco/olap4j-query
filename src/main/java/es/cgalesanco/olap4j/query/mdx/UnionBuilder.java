@@ -102,4 +102,14 @@ public class UnionBuilder {
 		return (members == null || members.isEmpty())
 				&& (expressions == null || expressions.isEmpty());
 	}
+
+	public void add(Collection<Member> members) {
+		if ( members != null ) {
+			if ( this.members == null )
+				this.members = new ArrayList<MemberNode>();
+			for(Member m : members) {
+				this.members.add(new MemberNode(null, m));
+			}
+		}
+	}
 }
