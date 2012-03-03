@@ -2,11 +2,9 @@ package es.cgalesanco.olap4j.query;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.Stack;
@@ -902,23 +900,20 @@ public class QueryHierarchy {
 				selectionTree, null, Sign.EXCLUDE);
 		AxisExpression expression = new AxisExpression();
 
-		Map<Level, List<Member>> processed = new HashMap<Level, List<Member>>();
 		for (SelectionTree root : selectionTree.getOverridingChildren()) {
 			VisitingInfo rootVisit = visitInfo.visitChild(root);
-			toOlap4jQuery(false, rootVisit, expander, drillList, expression,
-					processed);
+			toOlap4jQuery(false, rootVisit, expander, drillList, expression);
 		}
 
 		if (expander.isHierarchyExpanded())
-			expandLevels(processed, expression, drillList);
+			expandLevels(expression, drillList);
 		else
-			drillLevels(processed, expression, drillList);
+			drillLevels(expression, drillList);
 
 		return expression.getExpression();
 	}
 
-	private void drillLevels(Map<Level, List<Member>> processed,
-			AxisExpression expression, List<Member> drillList) {
+	private void drillLevels(AxisExpression expression, List<Member> drillList) {
 		Iterator<Level> itLevels = includedLevels.keySet().iterator();
 		if (!itLevels.hasNext())
 			return;
@@ -963,18 +958,7 @@ public class QueryHierarchy {
 		}
 	}
 
-	private void addProcessed(Map<Level, List<Member>> processed, Member member) {
-		Level l = member.getLevel();
-		List<Member> memberList = processed.get(l);
-		if (memberList == null) {
-			memberList = new ArrayList<Member>();
-			processed.put(l, memberList);
-		}
-		memberList.add(member);
-	}
-
-	private void expandLevels(Map<Level, List<Member>> processed,
-			AxisExpression expression, List<Member> undrillList) {
+	private void expandLevels(AxisExpression expression, List<Member> undrillList) {
 		Iterator<Level> itLevels = includedLevels.keySet().iterator();
 		if (!itLevels.hasNext())
 			return;
@@ -1046,12 +1030,10 @@ public class QueryHierarchy {
 	 */
 	private void toOlap4jQuery(boolean alreadyIncluded, VisitingInfo current,
 			HierarchyExpander expander, List<Member> drillList,
-			AxisExpression expression, Map<Level, List<Member>> processed) {
+			AxisExpression expression) {
 		Member currentMember = current.getMember();
 		SelectionTree currentNode = current.getNode();
 		Sign currentSign = current.getEffectiveSign(Operator.MEMBER);
-
-		addProcessed(processed, currentMember);
 
 		// If this member is included, and is not drilled (nor expanded),
 		// include it in the axis and ends the visit.
@@ -1091,7 +1073,7 @@ public class QueryHierarchy {
 			toOlap4jQuery(
 					childrenSign == Sign.INCLUDE
 							&& (!expander.isHierarchyExpanded() || descendantsSign == Sign.EXCLUDE),
-					childVisit, expander, drillList, expression, processed);
+					childVisit, expander, drillList, expression);
 		}
 
 		// If descendants are included, expand non-overriding nodes in the
