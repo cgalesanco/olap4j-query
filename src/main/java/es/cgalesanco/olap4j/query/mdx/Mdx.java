@@ -104,6 +104,6 @@ public class Mdx {
 	}
 
 	public static ParseTreeNode allMembers(Level level) {
-		return new CallNode(null, "Members", Syntax.Property, new LevelNode(null, level));
+		return new CallNode(null, "AllMembers", Syntax.Property, new LevelNode(null, level));
 	}
 }
