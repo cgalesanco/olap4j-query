@@ -1,16 +1,23 @@
 package es.cgalesanco.olap4j.query;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.SortedMap;
 import java.util.Stack;
+import java.util.TreeMap;
 
 import org.olap4j.Axis;
 import org.olap4j.OlapException;
 import org.olap4j.mdx.IdentifierSegment;
 import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.metadata.Hierarchy;
+import org.olap4j.metadata.Level;
 import org.olap4j.metadata.Member;
 
 import es.cgalesanco.olap4j.query.Selection.Operator;
@@ -54,6 +61,18 @@ public class QueryHierarchy {
 	private final Hierarchy hierarchy;
 	private final Query query;
 	private QueryAxis axis;
+	private SortedMap<Level, Integer> includedLevels;
+	private SortedMap<Level, Integer> excludedLevels;
+	private int currentSequence;
+
+	private static class LevelComparator implements Comparator<Level> {
+
+		@Override
+		public int compare(Level o1, Level o2) {
+			return o1.getDepth() - o2.getDepth();
+		}
+
+	}
 
 	/**
 	 * <p>
@@ -73,8 +92,11 @@ public class QueryHierarchy {
 	QueryHierarchy(QueryAxis axis, Hierarchy baseHierarchy) {
 		this.axis = axis;
 		this.query = axis.getQuery();
+		includedLevels = new TreeMap<Level, Integer>(new LevelComparator());
+		excludedLevels = new TreeMap<Level, Integer>(new LevelComparator());
 		selectionTree = new SelectionTree();
 		hierarchy = baseHierarchy;
+		currentSequence = 0;
 	}
 
 	/**
@@ -173,6 +195,42 @@ public class QueryHierarchy {
 		return include;
 	}
 
+	public void include(Level level) {
+		applyLevel(level, Sign.INCLUDE);
+	}
+
+	public void exclude(Level level) {
+		applyLevel(level, Sign.EXCLUDE);
+	}
+
+	private void applyLevel(Level level, Sign s) {
+		int seq = ++currentSequence;
+		if (s == Sign.INCLUDE) {
+			includedLevels.put(level, seq);
+			excludedLevels.remove(level);
+		} else {
+			excludedLevels.put(level, seq);
+			includedLevels.remove(level);
+		}
+
+		applyLevelAction(this.selectionTree, level.getDepth()+1, s);
+	}
+
+	private void applyLevelAction(SelectionTree selection, int depth, Sign s) {
+		if (depth == 0) {
+			selection.getStatus().apply(s, Operator.MEMBER);
+			return;
+		}
+
+		if (depth == 1) {
+			selection.getStatus().apply(s, Operator.CHILDREN);
+		}
+
+		for (SelectionTree child : selection.getOverridingChildren()) {
+			applyLevelAction(child, depth - 1, s);
+		}
+	}
+
 	/**
 	 * <p>
 	 * Tests if a given member is included in the {@link QueryHierarchy}.
@@ -202,7 +260,11 @@ public class QueryHierarchy {
 				if (s != null)
 					return s == Sign.INCLUDE;
 			}
-			return info.getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE;
+			if ( info.getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE) {
+				return !getExcludedLevels(info.getNode().getSequence()).contains(member.getLevel());
+			} else {
+				return getIncludedLevels(info.getNode().getSequence()).contains(member.getLevel());
+			}
 		}
 	}
 
@@ -310,10 +372,10 @@ public class QueryHierarchy {
 	 * @return the effective selections for this Query.
 	 */
 	public List<Selection> listSelections() {
-		List<Selection> result = new ArrayList<Selection>();
+		SelectionListBuilder builder = new SelectionListBuilder(includedLevels, excludedLevels);
 		for (SelectionTree root : selectionTree.getOverridingChildren())
-			listSelections(result, root);
-		return result;
+			listSelections(builder, root); 
+		return builder.getResult();
 	}
 
 	/**
@@ -337,6 +399,7 @@ public class QueryHierarchy {
 
 		VisitingInfo visitInfo = createVisitInfo(member);
 		Member visitMember = visitInfo.getMember();
+		List<Level> levels = getHierarchy().getLevels();
 		if (visitMember == null) {
 			return false;
 		}
@@ -353,6 +416,9 @@ public class QueryHierarchy {
 	 */
 	public void clear() {
 		selectionTree.clear();
+		includedLevels.clear();
+		excludedLevels.clear();
+		currentSequence = 0;
 	}
 
 	public Sign getEffectiveSignAt(Member m, Operator op) {
@@ -536,8 +602,24 @@ public class QueryHierarchy {
 		// Creates necesarry tree nodes including the one corresponding to this
 		// action
 		while (!path.isEmpty()) {
+			Member m = path.pop();
 			memberInfo = memberInfo.visitChild(memberInfo.getNode()
-					.createOverridingChild(path.pop()));
+					.createOverridingChild(m));
+			
+			Level memberLevel = m.getLevel();
+			if ( includedLevels.containsKey(memberLevel) )
+				memberInfo.getNode().getStatus().include(Operator.MEMBER);
+			if ( excludedLevels.containsKey(memberLevel))
+				memberInfo.getNode().getStatus().exclude(Operator.MEMBER);
+			
+			List<Level> levels = getHierarchy().getLevels();
+			if ( memberLevel.getDepth() + 1 < levels.size()) {
+				Level childrenLevel = levels.get(memberLevel.getDepth()+1);
+				if ( includedLevels.containsKey(childrenLevel)) 
+					memberInfo.getNode().getStatus().include(Operator.CHILDREN);
+				if ( excludedLevels.containsKey(childrenLevel))
+					memberInfo.getNode().getStatus().exclude(Operator.CHILDREN);				
+			}
 		}
 		if (action.getOperator() == Operator.MEMBER
 				&& action.getSign() == memberInfo
@@ -554,6 +636,7 @@ public class QueryHierarchy {
 		currentSt.apply(action.getSign(), action.getOperator());
 
 		if (action.getOperator() == Operator.DESCENDANTS) {
+			current.setSequence(currentSequence);
 			current.getOverridingChildren().clear();
 		} else {
 			if (action.getOperator() == Operator.CHILDREN) {
@@ -706,11 +789,11 @@ public class QueryHierarchy {
 	 * @param from
 	 *            current selection node.
 	 */
-	private void listSelections(List<Selection> result, SelectionTree from) {
-		result.addAll(from.listSelections());
+	private void listSelections(SelectionListBuilder builder, SelectionTree from) {
+		builder.addSelections(from);
 
 		for (SelectionTree child : from.getOverridingChildren()) {
-			listSelections(result, child);
+			listSelections(builder, child);
 		}
 	}
 
@@ -818,12 +901,128 @@ public class QueryHierarchy {
 		SelectionTree.VisitingInfo visitInfo = new SelectionTree.VisitingInfo(
 				selectionTree, null, Sign.EXCLUDE);
 		AxisExpression expression = new AxisExpression();
+
+		Map<Level, List<Member>> processed = new HashMap<Level, List<Member>>();
 		for (SelectionTree root : selectionTree.getOverridingChildren()) {
 			VisitingInfo rootVisit = visitInfo.visitChild(root);
-			toOlap4jQuery(false, rootVisit, expander, drillList, expression);
+			toOlap4jQuery(false, rootVisit, expander, drillList, expression,
+					processed);
 		}
 
+		if (expander.isHierarchyExpanded())
+			expandLevels(processed, expression, drillList);
+		else
+			drillLevels(processed, expression, drillList);
+
 		return expression.getExpression();
+	}
+
+	private void drillLevels(Map<Level, List<Member>> processed,
+			AxisExpression expression, List<Member> drillList) {
+		Iterator<Level> itLevels = includedLevels.keySet().iterator();
+		if (!itLevels.hasNext())
+			return;
+
+		// Include members from first expanded level
+		Level firstLevel = itLevels.next();
+		MemberSet rootMemberSet = new LevelMemberSet(firstLevel,
+				getProcessedMembers(firstLevel));
+		if (firstLevel.getDepth() == 0) {
+			expression.include(Mdx.descendants(rootMemberSet.getMdx(),
+					firstLevel.getDepth()));
+		}
+
+		MemberSet previousUndrills = rootMemberSet;
+		while (itLevels.hasNext()) {
+			// Computes the list of drilled members in this level
+			Level nextLevel = itLevels.next();
+			List<Member> drilledRoots = new ArrayList<Member>();
+			Iterator<Member> itDrills = drillList.iterator();
+			while (itDrills.hasNext()) {
+				Member drill = itDrills.next();
+				if (drill.getLevel().equals(firstLevel)) {
+					if (previousUndrills.containsAncestorOf(drill)) {
+						itDrills.remove();
+						drilledRoots.add(drill);
+					}
+				}
+			}
+
+			// Executes drill for those members
+			int levelDistance = nextLevel.getDepth() - firstLevel.getDepth();
+			if (levelDistance == 1)
+				expression.drill(UnionBuilder.fromMembers(drilledRoots));
+			else
+				expression.include(Mdx.descendants(
+						UnionBuilder.fromMembers(drilledRoots), levelDistance));
+
+			// Prepares for next iteration
+			firstLevel = nextLevel;
+			previousUndrills = new CollectionMemberSet(
+					drilledRoots.toArray(new Member[drilledRoots.size()]));
+		}
+	}
+
+	private void addProcessed(Map<Level, List<Member>> processed, Member member) {
+		Level l = member.getLevel();
+		List<Member> memberList = processed.get(l);
+		if (memberList == null) {
+			memberList = new ArrayList<Member>();
+			processed.put(l, memberList);
+		}
+		memberList.add(member);
+	}
+
+	private void expandLevels(Map<Level, List<Member>> processed,
+			AxisExpression expression, List<Member> undrillList) {
+		Iterator<Level> itLevels = includedLevels.keySet().iterator();
+		if (!itLevels.hasNext())
+			return;
+
+		// Include members from first expanded level
+
+		Level firstLevel = itLevels.next();
+		List<Member> processedMembers = getProcessedMembers(firstLevel);
+		MemberSet rootMembers = new LevelMemberSet(getHierarchy().getLevels()
+				.get(0), processedMembers);
+		expression.include(Mdx.descendants(rootMembers.getMdx(),
+				firstLevel.getDepth()));
+
+		while (itLevels.hasNext()) {
+			// Computes the list of drilled members in this level
+			Level nextLevel = itLevels.next();
+			List<Member> undrilledRoots = new ArrayList<Member>();
+			Iterator<Member> itUndrills = undrillList.iterator();
+			while (itUndrills.hasNext()) {
+				Member undrill = itUndrills.next();
+				if (undrill.getLevel().equals(firstLevel)) {
+					if (rootMembers.containsAncestorOf(undrill)) {
+						itUndrills.remove();
+						undrilledRoots.add(undrill);
+					}
+				}
+			}
+
+			// Executes drill for not-undrilled members
+			int levelDepth = nextLevel.getDepth();
+			expression.include(Mdx.except(Mdx.allMembers(nextLevel), Mdx
+					.descendants(UnionBuilder.fromMembers(processedMembers),
+							levelDepth)));
+			expression.exclude(Mdx.descendants(
+					UnionBuilder.fromMembers(undrilledRoots), levelDepth,
+					"AFTER"));
+
+			// Prepares for next iteration
+			firstLevel = nextLevel;
+		}
+	}
+
+	private List<Member> getProcessedMembers(Level l) {
+		List<Member> treeRoots = new ArrayList<Member>();
+		for (SelectionTree r : selectionTree.getOverridingChildren()) {
+			treeRoots.add(r.getMember());
+		}
+		return treeRoots;
 	}
 
 	/**
@@ -847,17 +1046,18 @@ public class QueryHierarchy {
 	 */
 	private void toOlap4jQuery(boolean alreadyIncluded, VisitingInfo current,
 			HierarchyExpander expander, List<Member> drillList,
-			AxisExpression expression) {
+			AxisExpression expression, Map<Level, List<Member>> processed) {
 		Member currentMember = current.getMember();
 		SelectionTree currentNode = current.getNode();
 		Sign currentSign = current.getEffectiveSign(Operator.MEMBER);
+
+		addProcessed(processed, currentMember);
 
 		// If this member is included, and is not drilled (nor expanded),
 		// include it in the axis and ends the visit.
 		if (currentSign == Sign.INCLUDE) {
 			if (!expander.isHierarchyExpanded()) {
-				if (!drillList.remove(currentMember)
-						&& !expander.isLevelExpanded(currentMember.getDepth())) {
+				if (!drillList.remove(currentMember)) {
 					if (!alreadyIncluded)
 						expression.include(Mdx.member(currentMember));
 					return;
@@ -891,7 +1091,7 @@ public class QueryHierarchy {
 			toOlap4jQuery(
 					childrenSign == Sign.INCLUDE
 							&& (!expander.isHierarchyExpanded() || descendantsSign == Sign.EXCLUDE),
-					childVisit, expander, drillList, expression);
+					childVisit, expander, drillList, expression, processed);
 		}
 
 		// If descendants are included, expand non-overriding nodes in the
@@ -922,7 +1122,9 @@ public class QueryHierarchy {
 						expression.include(expansionRoots.getMdx());
 					}
 				}
-				expander.expand(expansionRoots, drillList, expression);
+				expander.expand(expansionRoots, drillList,
+						getExcludedLevels(currentNode.getSequence()),
+						expression);
 			} else {
 				ChildrenMemberSet expansionRoots = new ChildrenMemberSet(
 						currentMember, overridedMembers);
@@ -944,17 +1146,66 @@ public class QueryHierarchy {
 						}
 					}
 				}
-				expander.expand(expansionRoots, drillList, expression);
+				expander.expand(expansionRoots, drillList,
+						getExcludedLevels(currentNode.getSequence()),
+						expression);
 			}
-		} else if (childrenSign == Sign.INCLUDE) {
-			// Include children members
-			if (currentSign == Sign.INCLUDE) {
-				expression.drill(Mdx.member(currentMember));
+		} else {
+			if (childrenSign == Sign.INCLUDE) {
+				// Include children members
+				if (currentSign == Sign.INCLUDE) {
+					expression.drill(Mdx.member(currentMember));
+				} else {
+					expression.include(Mdx.children(currentMember));
+				}
+				
+				List<Level> includedLevels = getIncludedLevels(currentNode.getSequence());
+				Level fromLevel = currentMember.getLevel();
+				if ( fromLevel.getDepth()+2 < getHierarchy().getLevels().size() ) {
+					expander.expandLevels(
+							new GrandchildrenSet(currentMember, overridedMembers),
+							drillList, 
+							includedLevels, 
+							expression);
+				}
 			} else {
-				expression.include(Mdx.children(currentMember));
+				Level fromLevel = currentMember.getLevel();
+				List<Level> levels = getHierarchy().getLevels();
+				int iLevel = fromLevel.getDepth()+2;
+				List<Level> actuallyIncludedLevels = getIncludedLevels(currentNode.getSequence());
+				while( iLevel < levels.size() ) {
+					fromLevel = levels.get(iLevel);
+					if ( actuallyIncludedLevels.contains(fromLevel) )
+						break;
+					
+					++iLevel;
+				}
+				
+				if ( iLevel > levels.size() )
+					return;
+				
+				expander.expandLevels(new DescendantsSet(currentMember, fromLevel), drillList, actuallyIncludedLevels, expression);
 			}
 		}
 
+	}
+
+	private List<Level> getIncludedLevels(int sequence) {
+		List<Level> levels = new ArrayList<Level>();
+		for (Entry<Level, Integer> eLevel : includedLevels.entrySet()) {
+			if (eLevel.getValue() >= sequence)
+				levels.add(eLevel.getKey());
+		}
+		return levels;
+	}
+
+	private List<Level> getExcludedLevels(int sequence) {
+		List<Level> levels = new ArrayList<Level>();
+		for (Entry<Level, Integer> eLevel : excludedLevels.entrySet()) {
+			if (eLevel.getValue() >= sequence)
+				levels.add(eLevel.getKey());
+		}
+		return levels;
 	}
 
 	/**
@@ -973,12 +1224,11 @@ public class QueryHierarchy {
 	private void toOlap4jQueryDidactic(VisitingInfo current,
 			HierarchyExpander expander, List<Member> drillList,
 			AxisExpression expression) {
-		boolean isMemberIncluded = 
-				current.getEffectiveSign(Operator.MEMBER) == Sign.INCLUDE;
-		boolean areChildrenIncluded = 
-				current.getEffectiveSign(Operator.CHILDREN) == Sign.INCLUDE;
-		boolean areDescendantsIncluded = 
-				current.getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE;
+		boolean isMemberIncluded = current.getEffectiveSign(Operator.MEMBER) == Sign.INCLUDE;
+		boolean areChildrenIncluded = current
+				.getEffectiveSign(Operator.CHILDREN) == Sign.INCLUDE;
+		boolean areDescendantsIncluded = current
+				.getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE;
 
 		// Processes current member, including or excluding it from the
 		// expression as necessary.
@@ -995,15 +1245,11 @@ public class QueryHierarchy {
 		// Recursively calls toOlap4jQueryDidactic on overrided children
 		List<Member> overridedChildren = new ArrayList<Member>();
 		for (SelectionTree overridedChild : current.getNode()
-												.getOverridingChildren()) {
+				.getOverridingChildren()) {
 			overridedChildren.add(overridedChild.getMember());
 
 			VisitingInfo childVisit = current.visitChild(overridedChild);
-			toOlap4jQueryDidactic(
-					childVisit, 
-					expander, 
-					drillList, 
-					expression);
+			toOlap4jQueryDidactic(childVisit, expander, drillList, expression);
 		}
 
 		if (areDescendantsIncluded) {
@@ -1016,12 +1262,13 @@ public class QueryHierarchy {
 				expansionBase = new GrandchildrenSet(currentMember,
 						overridedChildren);
 			}
-			expander.expand(expansionBase, drillList, expression);
+			expander.expand(expansionBase, drillList, getExcludedLevels(current
+					.getNode().getSequence()), expression);
 		} else {
 			// Include children if necessary
 			if (areChildrenIncluded) {
-				MemberSet nonOverridingChildren 
-					= new ChildrenMemberSet(currentMember, overridedChildren);
+				MemberSet nonOverridingChildren = new ChildrenMemberSet(
+						currentMember, overridedChildren);
 				expression.include(nonOverridingChildren.getMdx());
 			}
 		}
