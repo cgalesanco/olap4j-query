@@ -434,7 +434,6 @@ public class RegressionIT {
 		// Inclusion of DESCENDANTS of [Time].[1997].
 		// The hierarchy is expanded, so we get full hierarchy.
 		Member root1997 = testHierarchies[0].getHierarchy().getRootMembers().get("1997");
-		Member root1998 = testHierarchies[0].getHierarchy().getRootMembers().get("1998");
 		testHierarchies[0].include(Operator.DESCENDANTS, root1997);
 		assertRowsMembers(
 				"-[Time].[1997]",

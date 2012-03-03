@@ -138,8 +138,8 @@ public class ExpandedQueryHierarchyMethodicTest {
 				"{%1$s}", 
 				"%1$s.Children",
 				"DrilldownMember({%1$s}, {%1$s}, RECURSIVE)",
-				"Descendants(%1$s, 2, SELF_AND_AFTER)", 
-				"Union({%1$s}, Descendants(%1$s, 2, SELF_AND_AFTER))",
+				"Except(Descendants(%1$s, 2, SELF_AND_AFTER), Descendants({%3$s}, 0, AFTER))", 
+				"Except(Union({%1$s}, Descendants(%1$s, 2, SELF_AND_AFTER)), Descendants({%3$s}, 0, AFTER))",
 				"Except(Descendants(%1$s, 1, SELF_AND_AFTER), Descendants({%3$s}, 0, AFTER))", 
 				"Except(Union({%1$s}, Descendants(%1$s, 1, SELF_AND_AFTER)), Descendants({%3$s}, 0, AFTER))" };
 
