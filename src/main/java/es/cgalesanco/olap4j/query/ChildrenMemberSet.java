@@ -3,7 +3,9 @@ package es.cgalesanco.olap4j.query;
 import java.util.List;
 
 import org.olap4j.mdx.ParseTreeNode;
+import org.olap4j.metadata.Level;
 import org.olap4j.metadata.Member;
+import org.olap4j.metadata.NamedList;
 
 import es.cgalesanco.olap4j.query.mdx.Mdx;
 import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
@@ -11,10 +13,15 @@ import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 class ChildrenMemberSet implements MemberSet {
 	private Member parent;
 	private List<Member> excludedMembers;
+	private Level level;
 
 	public ChildrenMemberSet(Member parent, List<Member> excludedChildren) {
 		this.parent = parent;
 		this.excludedMembers = excludedChildren;
+		this.level = parent.getLevel();
+		NamedList<Level> levels = parent.getHierarchy().getLevels();
+		if ( parent.getLevel().getDepth()+1 < levels.size() )
+			this.level = levels.get(parent.getLevel().getDepth()+1);
 	}
 
 	@Override
@@ -47,15 +54,8 @@ class ChildrenMemberSet implements MemberSet {
 	}
 
 	@Override
-	public boolean remove(Member m) {
-		if ( !parent.equals(m.getParentMember()))
-			return false;
-		
-		if ( excludedMembers.contains(m) )
-			return false;
-		
-		excludedMembers.add(m);
-		return true;
+	public Level getLevel() {
+		return level;
 	}
 
 }
