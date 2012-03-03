@@ -4,10 +4,12 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import org.olap4j.mdx.CallNode;
+import org.olap4j.mdx.LevelNode;
 import org.olap4j.mdx.LiteralNode;
 import org.olap4j.mdx.MemberNode;
 import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.mdx.Syntax;
+import org.olap4j.metadata.Level;
 import org.olap4j.metadata.Member;
 
 import es.cgalesanco.olap4j.query.SortOrder;
@@ -54,6 +56,10 @@ public class Mdx {
 	}
 
 	public static ParseTreeNode descendants(ParseTreeNode from, int level) {
+		if ( from == null )
+			return null;
+		if ( level == 0 )
+			return from;
 		return new CallNode(null, "Descendants", Syntax.Function,
 				from, LiteralNode.createNumeric(null,
 						new BigDecimal(level), false));
@@ -61,6 +67,9 @@ public class Mdx {
 
 	public static ParseTreeNode descendants(ParseTreeNode from, int level,
 			String flag) {
+		if ( from == null )
+			return null;
+		
 		if ( flag == null )
 			return descendants(from, level);
 		else
@@ -92,5 +101,9 @@ public class Mdx {
 		if ( n == null )
 			return null;
 		return new CallNode(null, "Hierarchize", Syntax.Function, n);
+	}
+
+	public static ParseTreeNode allMembers(Level level) {
+		return new CallNode(null, "Members", Syntax.Property, new LevelNode(null, level));
 	}
 }
