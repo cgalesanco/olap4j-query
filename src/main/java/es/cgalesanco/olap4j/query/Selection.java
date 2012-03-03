@@ -1,6 +1,6 @@
 package es.cgalesanco.olap4j.query;
 
-import org.olap4j.metadata.Member;
+import org.olap4j.metadata.MetadataElement;
 
 /**
  * <p>
@@ -79,11 +79,11 @@ public interface Selection {
 	}
 
 	/**
-	 * Returns the member used as reference for this selection.
+	 * Returns the metadata element used as reference for this selection.
 	 * 
-	 * @return the member used as reference for this selection.
+	 * @return the metadata element used as reference for this selection.
 	 */
-	public Member getMember();
+	public MetadataElement getRoot();
 
 	/**
 	 * Returns the sign of this selection.

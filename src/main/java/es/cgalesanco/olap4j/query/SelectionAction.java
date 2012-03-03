@@ -1,6 +1,7 @@
 package es.cgalesanco.olap4j.query;
 
 import org.olap4j.metadata.Member;
+import org.olap4j.metadata.MetadataElement;
 
 /**
  * Implementation for the Selection interface.
@@ -30,6 +31,14 @@ public class SelectionAction implements Selection {
 	}
 
 	@Override
+	public MetadataElement getRoot() {
+		return getMember();
+	}
+
+	/**
+	 * Type safe getter for {@link #getRoot()}
+	 * @return
+	 */
 	public Member getMember() {
 		return this.member;
 	}
