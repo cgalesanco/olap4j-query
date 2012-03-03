@@ -1,7 +1,6 @@
 package es.cgalesanco.olap4j.query;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -383,9 +382,10 @@ public class QueryAxis {
 	 *            the sort order to use.
 	 */
 	public void sort(Member[] coordinates, SortOrder order) {
-		if (sortPosition == null)
-			sortPosition = Arrays.asList(coordinates);
-		else {
+		if (sortPosition == null) {
+			sortPosition = new ArrayList<Member>();
+			Collections.addAll(sortPosition, coordinates);
+		} else {
 			sortPosition.clear();
 			Collections.addAll(sortPosition, coordinates);
 		}
