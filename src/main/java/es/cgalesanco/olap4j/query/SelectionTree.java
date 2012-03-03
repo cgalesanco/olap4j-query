@@ -130,6 +130,7 @@ class SelectionTree {
 	private MemberSelectionState selectionState;
 	private Member member;
 	private List<SelectionTree> overridingChildren;
+	private int sequence;
 
 	/**
 	 * Constructs selection tree. The resulting tree has no members selected.
@@ -140,9 +141,9 @@ class SelectionTree {
 		overridingChildren = new ArrayList<SelectionTree>();
 	}
 
-	private SelectionTree(Member m) {
-		selectionState = new MemberSelectionState();
+	protected SelectionTree(Member m) {
 		member = m;
+		selectionState = new MemberSelectionState();
 		overridingChildren = new ArrayList<SelectionTree>();
 	}
 
@@ -154,6 +155,15 @@ class SelectionTree {
 	public Member getMember() {
 		return member;
 	}
+	
+	public int getSequence() {
+		return sequence;
+	}
+	
+	public void setSequence(int s) {
+		sequence = s;
+	}
+	
 
 	/**
 	 * Returns the selection state for this node.
