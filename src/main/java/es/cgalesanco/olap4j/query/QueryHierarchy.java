@@ -397,12 +397,23 @@ public class QueryHierarchy {
 
 		VisitingInfo visitInfo = createVisitInfo(member);
 		Member visitMember = visitInfo.getMember();
-		List<Level> levels = getHierarchy().getLevels();
-		if (visitMember == null) {
-			return false;
-		}
-		if (!visitMember.equals(member)) {
-			return visitInfo.getDefaultSign() != Sign.INCLUDE;
+		if (!member.equals(visitMember)) {
+			if ( visitInfo.getDefaultSign() == Sign.EXCLUDE ) {
+				for(Entry<Level,Integer> iLevel : includedLevels.entrySet() ) {
+					if ( iLevel.getValue() > visitInfo.getNode().getSequence() &&
+							iLevel.getKey().getDepth() > member.getLevel().getDepth() )
+						return false;
+				}
+				return true;
+			} else {
+				for(int i = member.getLevel().getDepth()+1; i < hierarchy.getLevels().size(); ++i) {
+					Level l = hierarchy.getLevels().get(i);
+					Integer levelSequence = excludedLevels.get(l);
+					if ( levelSequence == null || levelSequence <= visitInfo.getNode().getSequence() )
+						return false;
+				}
+				return true;
+			}
 		}
 
 		return !hasChildren(visitInfo);
@@ -994,7 +1005,7 @@ public class QueryHierarchy {
 							levelDepth)));
 			expression.exclude(Mdx.descendants(
 					UnionBuilder.fromMembers(undrilledRoots), levelDepth,
-					"AFTER"));
+					"SELF_AND_AFTER"));
 
 			// Prepares for next iteration
 			firstLevel = nextLevel;

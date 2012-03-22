@@ -17,6 +17,7 @@ import org.olap4j.CellSetAxis;
 import org.olap4j.OlapConnection;
 import org.olap4j.Position;
 import org.olap4j.metadata.Cube;
+import org.olap4j.metadata.Level;
 import org.olap4j.metadata.Member;
 
 import es.cgalesanco.olap4j.query.Selection.Operator;
@@ -533,6 +534,183 @@ public class RegressionIT {
 				"   [Time].[1997].[Q4].[10]",
 				"   [Time].[1997].[Q4].[11]",
 				"   [Time].[1997].[Q4].[12]");
+				
+	}
+	
+	
+	@Test
+	public void testSingleHierarchy_levels_expanded() throws Exception {
+		// Adds another hierarchy to the test axis to avoid a Mondrian bug.
+		// Comment out this lines to reproduce the bug.
+		QueryHierarchy workaroundHierarchy = query.getHierarchy("Store Type");
+		workaroundHierarchy.include(Operator.MEMBER, workaroundHierarchy.getHierarchy().getRootMembers().get(0));
+		testAxis.addHierarchy(workaroundHierarchy);
+		testAxis.expandHierarchy(testHierarchies[0]);
+		
+		// Initial state for a QueryHierarchy: no member included. 
+		assertRowsMembers();
+
+		// Inclusion of [Time].[Year] level
+		// The hierarchy is expanded, so we get full hierarchy.
+		Level year = testHierarchies[0].getHierarchy().getLevels().get("Year");
+		testHierarchies[0].include(year);
+		assertRowsMembers(
+				" [Time].[1997]",
+				" [Time].[1998]"
+		);
+
+		// Inclusion of [Time].[Month] level
+		// The hierarchy is expanded, so we get full hierarchy.
+		Level month = testHierarchies[0].getHierarchy().getLevels().get("Month");
+		testHierarchies[0].include(month);
+		assertRowsMembers(
+				"-[Time].[1997]",
+				"  [Time].[1997].[Q1].[1]",
+				"  [Time].[1997].[Q1].[2]",
+				"  [Time].[1997].[Q1].[3]",
+				"  [Time].[1997].[Q2].[4]",
+				"  [Time].[1997].[Q2].[5]",
+				"  [Time].[1997].[Q2].[6]",
+				"  [Time].[1997].[Q3].[7]",
+				"  [Time].[1997].[Q3].[8]",
+				"  [Time].[1997].[Q3].[9]",
+				"  [Time].[1997].[Q4].[10]",
+				"  [Time].[1997].[Q4].[11]",
+				"  [Time].[1997].[Q4].[12]",
+				"-[Time].[1998]",
+				"  [Time].[1998].[Q1].[1]",
+				"  [Time].[1998].[Q1].[2]",
+				"  [Time].[1998].[Q1].[3]",
+				"  [Time].[1998].[Q2].[4]",
+				"  [Time].[1998].[Q2].[5]",
+				"  [Time].[1998].[Q2].[6]",
+				"  [Time].[1998].[Q3].[7]",
+				"  [Time].[1998].[Q3].[8]",
+				"  [Time].[1998].[Q3].[9]",
+				"  [Time].[1998].[Q4].[10]",
+				"  [Time].[1998].[Q4].[11]",
+				"  [Time].[1998].[Q4].[12]"
+		);
+		
+		// Undrill at [Time].[1997]
+		Member y1997 = testHierarchies[0].getHierarchy().getRootMembers().get("1997");
+		testAxis.undrill(y1997);
+		assertRowsMembers(
+				"+[Time].[1997]",
+				"-[Time].[1998]",
+				"  [Time].[1998].[Q1].[1]",
+				"  [Time].[1998].[Q1].[2]",
+				"  [Time].[1998].[Q1].[3]",
+				"  [Time].[1998].[Q2].[4]",
+				"  [Time].[1998].[Q2].[5]",
+				"  [Time].[1998].[Q2].[6]",
+				"  [Time].[1998].[Q3].[7]",
+				"  [Time].[1998].[Q3].[8]",
+				"  [Time].[1998].[Q3].[9]",
+				"  [Time].[1998].[Q4].[10]",
+				"  [Time].[1998].[Q4].[11]",
+				"  [Time].[1998].[Q4].[12]"
+		);
+		
+		// Inclusion of [Time].[Quarter] level
+		Level quarter = testHierarchies[0].getHierarchy().getLevels().get("Quarter");
+		testHierarchies[0].include(quarter);
+		assertRowsMembers(
+				"+[Time].[1997]",
+				"-[Time].[1998]",
+				"  -[Time].[1998].[Q1]",
+				"    [Time].[1998].[Q1].[1]",
+				"    [Time].[1998].[Q1].[2]",
+				"    [Time].[1998].[Q1].[3]",
+				"  -[Time].[1998].[Q2]",
+				"    [Time].[1998].[Q2].[4]",
+				"    [Time].[1998].[Q2].[5]",
+				"    [Time].[1998].[Q2].[6]",
+				"  -[Time].[1998].[Q3]",
+				"    [Time].[1998].[Q3].[7]",
+				"    [Time].[1998].[Q3].[8]",
+				"    [Time].[1998].[Q3].[9]",
+				"  -[Time].[1998].[Q4]",
+				"    [Time].[1998].[Q4].[10]",
+				"    [Time].[1998].[Q4].[11]",
+				"    [Time].[1998].[Q4].[12]"
+		);
+		
+		// Drill of [Time].[1997]
+		testAxis.drill(y1997);
+		assertRowsMembers(
+				"-[Time].[1997]",
+				"  -[Time].[1997].[Q1]",
+				"    [Time].[1997].[Q1].[1]",
+				"    [Time].[1997].[Q1].[2]",
+				"    [Time].[1997].[Q1].[3]",
+				"  -[Time].[1997].[Q2]",
+				"    [Time].[1997].[Q2].[4]",
+				"    [Time].[1997].[Q2].[5]",
+				"    [Time].[1997].[Q2].[6]",
+				"  -[Time].[1997].[Q3]",
+				"    [Time].[1997].[Q3].[7]",
+				"    [Time].[1997].[Q3].[8]",
+				"    [Time].[1997].[Q3].[9]",
+				"  -[Time].[1997].[Q4]",
+				"    [Time].[1997].[Q4].[10]",
+				"    [Time].[1997].[Q4].[11]",
+				"    [Time].[1997].[Q4].[12]",
+				"-[Time].[1998]",
+				"  -[Time].[1998].[Q1]",
+				"    [Time].[1998].[Q1].[1]",
+				"    [Time].[1998].[Q1].[2]",
+				"    [Time].[1998].[Q1].[3]",
+				"  -[Time].[1998].[Q2]",
+				"    [Time].[1998].[Q2].[4]",
+				"    [Time].[1998].[Q2].[5]",
+				"    [Time].[1998].[Q2].[6]",
+				"  -[Time].[1998].[Q3]",
+				"    [Time].[1998].[Q3].[7]",
+				"    [Time].[1998].[Q3].[8]",
+				"    [Time].[1998].[Q3].[9]",
+				"  -[Time].[1998].[Q4]",
+				"    [Time].[1998].[Q4].[10]",
+				"    [Time].[1998].[Q4].[11]",
+				"    [Time].[1998].[Q4].[12]"
+			);
+				
+		// Exclusion of [Time].[Year] level
+		testHierarchies[0].exclude(year);
+		assertRowsMembers(
+				"-[Time].[1997].[Q1]",
+				"  [Time].[1997].[Q1].[1]",
+				"  [Time].[1997].[Q1].[2]",
+				"  [Time].[1997].[Q1].[3]",
+				"-[Time].[1997].[Q2]",
+				"  [Time].[1997].[Q2].[4]",
+				"  [Time].[1997].[Q2].[5]",
+				"  [Time].[1997].[Q2].[6]",
+				"-[Time].[1997].[Q3]",
+				"  [Time].[1997].[Q3].[7]",
+				"  [Time].[1997].[Q3].[8]",
+				"  [Time].[1997].[Q3].[9]",
+				"-[Time].[1997].[Q4]",
+				"  [Time].[1997].[Q4].[10]",
+				"  [Time].[1997].[Q4].[11]",
+				"  [Time].[1997].[Q4].[12]",
+				"-[Time].[1998].[Q1]",
+				"  [Time].[1998].[Q1].[1]",
+				"  [Time].[1998].[Q1].[2]",
+				"  [Time].[1998].[Q1].[3]",
+				"-[Time].[1998].[Q2]",
+				"  [Time].[1998].[Q2].[4]",
+				"  [Time].[1998].[Q2].[5]",
+				"  [Time].[1998].[Q2].[6]",
+				"-[Time].[1998].[Q3]",
+				"  [Time].[1998].[Q3].[7]",
+				"  [Time].[1998].[Q3].[8]",
+				"  [Time].[1998].[Q3].[9]",
+				"-[Time].[1998].[Q4]",
+				"  [Time].[1998].[Q4].[10]",
+				"  [Time].[1998].[Q4].[11]",
+				"  [Time].[1998].[Q4].[12]"
+			);
 				
 	}
 	

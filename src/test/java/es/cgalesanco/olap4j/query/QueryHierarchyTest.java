@@ -134,14 +134,6 @@ public class QueryHierarchyTest {
 	}
 
 	@Test
-	public void testIsLeaf_excludesChildren_excludesDescendants_noOverride()
-			throws OlapException {
-		Member from = qh.getHierarchy().getRootMembers().get(0);
-
-		assertFalse(qh.isLeaf(from));
-	}
-
-	@Test
 	public void testIsLeaf_excludesChildren_excludesDescendants_inclusionOverride()
 			throws OlapException {
 		Member from = qh.getHierarchy().getRootMembers().get(0);
