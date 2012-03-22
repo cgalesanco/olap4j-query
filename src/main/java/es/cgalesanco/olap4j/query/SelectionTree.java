@@ -3,6 +3,7 @@ package es.cgalesanco.olap4j.query;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Stack;
 
 import org.olap4j.metadata.Member;
 
@@ -16,120 +17,11 @@ import es.cgalesanco.olap4j.query.Selection.Sign;
  * 
  */
 class SelectionTree {
-	/**
-	 * Represents the the status of a visitor of a SelectionTree. Accumulates
-	 * previous selection information to produce the effective selection at the
-	 * current node.
-	 * 
-	 * @author César García
-	 * 
-	 */
-	static class VisitingInfo {
-		private SelectionTree node;
-		private Sign defaultSign;
-		private SelectionTree parent;
-
-		/**
-		 * Constructs an instance
-		 * 
-		 * @param node
-		 *            visited node
-		 * @param parent
-		 *            parent of the visited node
-		 * @param defaultSign
-		 *            default selection sign.
-		 */
-		public VisitingInfo(SelectionTree node, SelectionTree parent,
-				Sign defaultSign) {
-			this.node = node;
-			this.defaultSign = defaultSign;
-			this.parent = parent;
-		}
-
-		/**
-		 * Return the visited node.
-		 * 
-		 * @return the visited node.
-		 */
-		public SelectionTree getNode() {
-			return node;
-		}
-
-		/**
-		 * Return the visited member, equivalent to getNode().getMember()
-		 * 
-		 * @return the visited member.
-		 */
-		public Member getMember() {
-			return node.getMember();
-		}
-
-		/**
-		 * Return the previously visited node.
-		 * 
-		 * @return the previously visited node
-		 */
-		public SelectionTree getParent() {
-			return parent;
-		}
-
-		/**
-		 * Return the default selection sign.
-		 * 
-		 * @return the default selection sign.
-		 */
-		public Sign getDefaultSign() {
-			return defaultSign;
-		}
-
-		/**
-		 * Return the effective selection sign for the given operator.
-		 * 
-		 * @param op
-		 *            the operator to check for
-		 * @return The effective selection sign for the given operator.
-		 */
-		public Sign getEffectiveSign(Operator op) {
-			if (op == Operator.MEMBER && parent != null) {
-				Sign def = parent.getStatus().getSelectionSign(
-						Operator.CHILDREN);
-				if (def != null)
-					return node.getStatus().getEffectiveSign(op, def);
-			}
-
-			return node.getStatus().getEffectiveSign(op, defaultSign);
-		}
-		
-		public boolean isMemberIncluded() {
-			return getEffectiveSign(Operator.MEMBER) == Sign.INCLUDE;
-		}
-		
-		public boolean areChildrenIncluded() {
-			return getEffectiveSign(Operator.CHILDREN) == Sign.INCLUDE;
-		}
-		
-		public boolean areDescendantsIncluded() {
-			return getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE;
-		}
-
-		/**
-		 * Generates the VisitingInfo instance for the given child of the
-		 * visited node.
-		 * 
-		 * @param next
-		 *            the next visiting node.
-		 * @return the VisitingInfo instance for the given child.
-		 */
-		public VisitingInfo visitChild(SelectionTree next) {
-			Sign nextDefaultSign = next.getStatus().getEffectiveSign(
-					Operator.DESCENDANTS, getDefaultSign());
-			return new VisitingInfo(next, this.node, nextDefaultSign);
-		}
-	}
 
 	private MemberSelectionState selectionState;
 	private Member member;
 	private List<SelectionTree> overridingChildren;
+	private SelectionTree parent;
 	private int sequence;
 
 	/**
@@ -139,12 +31,14 @@ class SelectionTree {
 		selectionState = new MemberSelectionState();
 		selectionState.exclude(Operator.DESCENDANTS);
 		overridingChildren = new ArrayList<SelectionTree>();
+		parent = null;
 	}
 
-	protected SelectionTree(Member m) {
+	protected SelectionTree(SelectionTree parent, Member m) {
 		member = m;
 		selectionState = new MemberSelectionState();
 		overridingChildren = new ArrayList<SelectionTree>();
+		this.parent = parent;
 	}
 
 	/**
@@ -207,7 +101,7 @@ class SelectionTree {
 	 * @return the new node.
 	 */
 	public SelectionTree createOverridingChild(Member m) {
-		SelectionTree n = new SelectionTree(m);
+		SelectionTree n = new SelectionTree(this, m);
 		overridingChildren.add(n);
 		return n;
 	}
@@ -261,6 +155,68 @@ class SelectionTree {
 	public void clear() {
 		selectionState = new MemberSelectionState();
 		selectionState.exclude(Operator.DESCENDANTS);
+		for(SelectionTree child : overridingChildren) {
+			child.parent = null;
+		}
 		overridingChildren.clear();
 	}
+
+	public Sign getEffectiveSign(Operator op) {
+		if (op == Operator.MEMBER && parent != null) {
+			Sign def = parent.getStatus().getSelectionSign(
+					Operator.CHILDREN);
+			if (def != null)
+				return selectionState.getEffectiveSign(op, def);
+		}
+
+		
+		Sign s = selectionState.getEffectiveSign(op, null);
+		if ( s == null ) {
+			return getDefaultSign();
+		}
+		return s;
+	}
+
+	public SelectionTree find(Member member) {
+		Stack<Member> path = createPathTo(member);
+		return find(path);
+	}
+
+	public SelectionTree find(Stack<Member> path) {
+		SelectionTree current = this;
+		while(!path.isEmpty()) {
+			Member m = path.peek();
+			SelectionTree next = current.getOverridingChild(m);
+			if ( next == null ) {
+				break;
+			}
+			
+			current = next;
+			path.pop();
+		}
+		return current;
+	}
+	
+	private Stack<Member> createPathTo(Member member) {
+		Stack<Member> path = new Stack<Member>();
+		while (member != null) {
+			path.push(member);
+			member = member.getParentMember();
+		}
+		return path;
+	}
+
+	public Sign getDefaultSign() {
+		SelectionTree prev = this;
+		Sign s = null;
+		while( prev != null && (s = prev.selectionState.getSelectionSign(Operator.DESCENDANTS)) == null) {
+			prev = prev.parent;
+		}
+		return s;
+	}
+
+	public SelectionTree getParent() {
+		return parent;
+	}
+
 }
