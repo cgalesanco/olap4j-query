@@ -15,13 +15,6 @@ class MemberSelectionState {
 		excludes = EnumSet.noneOf(Operator.class);
 	}
 	
-	public MemberSelectionState clone() {
-		MemberSelectionState clone = new MemberSelectionState();
-		clone.includes.addAll(this.includes);
-		clone.excludes.addAll(this.excludes);
-		return clone;
-	}
-	
 	private EnumSet<Operator> getSetFor(Sign s) {
 		if ( s == Sign.INCLUDE )
 			return includes;
@@ -71,27 +64,6 @@ class MemberSelectionState {
 
 	public boolean isNull() {
 		return includes.isEmpty() && excludes.isEmpty();
-	}
-
-	public Sign getEffectiveSign(Operator op, Sign defaultSign) {
-		Sign result = null;
-		switch (op) {
-		case MEMBER:
-			result = getSelectionSign(Operator.MEMBER);
-			if (result == null)
-				result = getSelectionSign(Operator.DESCENDANTS);
-			break;
-
-		case CHILDREN:
-			result = getSelectionSign(Operator.CHILDREN);
-			if (result == null)
-				result = getSelectionSign(Operator.DESCENDANTS);
-			break;
-
-		case DESCENDANTS:
-			result = getSelectionSign(Operator.DESCENDANTS);
-		}
-		return result == null ? defaultSign : result;
 	}
 
 }

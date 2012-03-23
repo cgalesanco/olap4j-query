@@ -27,12 +27,12 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 			return true;
 		
 		Member currentMember = current.getMember();
-		Sign currentSign = current.getEffectiveSign(Operator.MEMBER);
+		Sign currentSign = current.getMemberSign();
 		
 		boolean alreadyIncluded = false;
 		if ( current.getParent().getMember() != null ) {
 			SelectionNode parent = current.getParent();
-			alreadyIncluded = parent.getEffectiveSign(Operator.CHILDREN) == Sign.INCLUDE && parent.getEffectiveSign(Operator.DESCENDANTS) == Sign.EXCLUDE;
+			alreadyIncluded = parent.getChildrenSign() == Sign.INCLUDE && parent.getDefaultSign() == Sign.EXCLUDE;
 		}
 
 		// If this member is included, and is not drilled (nor expanded),
@@ -67,9 +67,9 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 		}
 		
 		Member currentMember = current.getMember();
-		Sign currentSign = current.getEffectiveSign(Operator.MEMBER);
-		Sign childrenSign = current.getEffectiveSign(Operator.CHILDREN);
-		Sign descendantsSign = current.getEffectiveSign(Operator.DESCENDANTS);
+		Sign currentSign = current.getMemberSign();
+		Sign childrenSign = current.getChildrenSign();
+		Sign descendantsSign = current.getDefaultSign();
 		
 		// If descendants are included, expand non-overriding nodes in the
 		// inclusion/exclusion tree.

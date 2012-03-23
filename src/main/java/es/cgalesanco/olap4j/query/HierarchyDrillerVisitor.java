@@ -10,7 +10,6 @@ import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.metadata.Level;
 import org.olap4j.metadata.Member;
 
-import es.cgalesanco.olap4j.query.Selection.Operator;
 import es.cgalesanco.olap4j.query.Selection.Sign;
 import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 import es.cgalesanco.olap4j.query.mdx.Mdx;
@@ -27,11 +26,11 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 			return true;
 		
 		Member currentMember = current.getMember();
-		Sign currentSign = current.getEffectiveSign(Operator.MEMBER);
+		Sign currentSign = current.getMemberSign();
 
 		boolean alreadyIncluded = false;
 		if ( current.getParent().getMember() != null ) {
-			alreadyIncluded = current.getParent().getEffectiveSign(Operator.CHILDREN) == Sign.INCLUDE;
+			alreadyIncluded = current.getParent().getChildrenSign() == Sign.INCLUDE;
 		}
 		
 		// If this member is included, and is not drilled (nor expanded),
@@ -63,9 +62,9 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 		}
 		
 		Member currentMember = current.getMember();
-		Sign currentSign = current.getEffectiveSign(Operator.MEMBER);
-		Sign childrenSign = current.getEffectiveSign(Operator.CHILDREN);
-		Sign descendantsSign = current.getEffectiveSign(Operator.DESCENDANTS);
+		Sign currentSign = current.getMemberSign();
+		Sign childrenSign = current.getChildrenSign();
+		Sign descendantsSign = current.getDefaultSign();
 		
 		List<Member> overridedMembers = current.getOverridedMembers();
 

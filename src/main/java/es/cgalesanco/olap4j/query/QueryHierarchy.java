@@ -283,12 +283,12 @@ public class QueryHierarchy {
 
 		SelectionNode info = selectionTree.find(member);
 		if (member.equals(info.getMember()))
-			return info.getEffectiveSign(Operator.MEMBER) == Sign.EXCLUDE;
+			return info.getMemberSign() == Sign.EXCLUDE;
 		Member parent = member.getParentMember();
 		if (parent != null && parent.equals(info.getMember())) {
-			return info.getEffectiveSign(Operator.CHILDREN) == Sign.EXCLUDE;
+			return info.getChildrenSign() == Sign.EXCLUDE;
 		}
-		return info.getEffectiveSign(Operator.DESCENDANTS) == Sign.EXCLUDE;
+		return info.getDefaultSign() == Sign.EXCLUDE;
 	}
 
 	/**
@@ -320,20 +320,24 @@ public class QueryHierarchy {
 	public Sign getEffectiveSignAt(Member m, Operator op) {
 		// TODO: check if this method is really needed.
 		SelectionNode info = selectionTree.find(m);
-		if (m.equals(info.getMember())) {
-			return info.getEffectiveSign(op);
-		}
-
 		switch (op) {
 		case DESCENDANTS:
+			return info.getDefaultSign();
+			
 		case CHILDREN:
-			return info.getEffectiveSign(Operator.DESCENDANTS);
+			if ( m.equals(info.getMember()))
+				return info.getChildrenSign();
+			return info.getDefaultSign();
+			
 		case MEMBER:
+			if ( m.equals(info.getMember()))
+				return info.getMemberSign();
+			
 			if (m.getParentMember() != null
 					&& m.getParentMember().equals(info.getMember())) {
-				return info.getEffectiveSign(Operator.CHILDREN);
+				return info.getChildrenSign();
 			}
-			return info.getEffectiveSign(Operator.DESCENDANTS);
+			return info.getDefaultSign();
 		}
 		return null;
 	}
@@ -423,10 +427,10 @@ public class QueryHierarchy {
 		if (m.equals(info.getMember())) {
 			if (info.hasOverridingChildren())
 				return false;
-			return info.getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE;
+			return info.getDefaultSign() == Sign.INCLUDE;
 		}
 
-		return info.getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE;
+		return info.getDefaultSign() == Sign.INCLUDE;
 	}
 
 	public List<Selection> listSelections() {
