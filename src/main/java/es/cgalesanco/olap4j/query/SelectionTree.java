@@ -403,24 +403,6 @@ class SelectionTree {
 		return expander.expand(root, levels);
 	}
 
-	private List<Level> getIncludedLevels(int sequence) {
-		List<Level> levels = new ArrayList<Level>();
-		for (Entry<Level, SelectionInfo> eLevel : levelSelections.entrySet()) {
-			if (eLevel.getValue().getSign() == Sign.INCLUDE && eLevel.getValue().getSequence() >= sequence)
-				levels.add(eLevel.getKey());
-		}
-		return levels;
-	}
-
-	private List<Level> getExcludedLevels(int sequence) {
-		List<Level> levels = new ArrayList<Level>();
-		for (Entry<Level, SelectionInfo> eLevel : levelSelections.entrySet()) {
-			if (eLevel.getValue().getSign() == Sign.EXCLUDE && eLevel.getValue().getSequence() >= sequence)
-				levels.add(eLevel.getKey());
-		}
-		return levels;
-	}
-
 	public boolean isIncluded(Member member) {
 		SelectionNode info = find(member);
 		if (member.equals(info.getMember()))
@@ -430,9 +412,9 @@ class SelectionTree {
 			return info.getEffectiveSign(Operator.CHILDREN) == Sign.INCLUDE;
 		}
 		if ( info.getEffectiveSign(Operator.DESCENDANTS) == Sign.INCLUDE) {
-			return !getExcludedLevels(info.getSequence()).contains(member.getLevel());
+			return !info.getExcludedLevels().contains(member.getLevel());
 		} else {
-			return getIncludedLevels(info.getSequence()).contains(member.getLevel());
+			return info.getIncludedLevels().contains(member.getLevel());
 		}
 	}
 
