@@ -195,8 +195,9 @@ public class QueryHierarchyTest {
 		Member rootMember = qh.getHierarchy().getRootMembers().get(0);
 		qh.include(Operator.CHILDREN, rootMember);
 		Member childMember = rootMember.getChildMembers().get(0);
-
-		ParseTreeNode expression = qh.toOlap4j(new HierarchyExpander(), Arrays.asList(childMember));
+		HierarchyExpander expander = new HierarchyExpander();
+		expander.setDrills(Arrays.asList(childMember));
+		ParseTreeNode expression = qh.toOlap4j(expander);
 
 		assertDrillExpression("%1$s.Children", expression, rootMember);
 	}

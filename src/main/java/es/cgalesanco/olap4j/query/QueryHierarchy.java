@@ -1,6 +1,5 @@
 package es.cgalesanco.olap4j.query;
 
-import java.util.LinkedList;
 import java.util.List;
 
 import org.olap4j.Axis;
@@ -356,15 +355,11 @@ public class QueryHierarchy {
 	 * @return the parse tree expressing this hierarchy set of members for the
 	 *         given drill list.
 	 */
-	ParseTreeNode toOlap4j(HierarchyExpander expander, List<Member> drills) {
+	ParseTreeNode toOlap4j(HierarchyExpander expander) {
 		if (getAxis().getLocation() == Axis.FILTER)
 			return selectionTree.toOlap4jFilter();
 
-		List<Member> drillList = new LinkedList<Member>();
-		if (drills != null)
-			drillList.addAll(drills);
-
-		return selectionTree.toOlap4jQuery(expander, drillList);
+		return selectionTree.toOlap4jQuery(expander);
 	}
 
 	/**
@@ -381,7 +376,7 @@ public class QueryHierarchy {
 	 *         hierarchy.
 	 */
 	public ParseTreeNode toOlap4j() {
-		return toOlap4j(new HierarchyExpander(), null);
+		return toOlap4j(new HierarchyExpander());
 	}
 
 	/**

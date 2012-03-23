@@ -21,6 +21,7 @@ public class QueryHierarchyMethodicTest {
 	private static QueryHierarchy qh;
 	private Member rootMember;
 	private Member childMember;
+	private HierarchyExpander expander;
 
 	public enum State {
 		Ed_Ech_Em(Sign.EXCLUDE), Ed_Ech_Im(Sign.EXCLUDE, Sign.EXCLUDE,
@@ -58,6 +59,7 @@ public class QueryHierarchyMethodicTest {
 		qh = q.getHierarchy("Time");
 		rootMember = qh.getHierarchy().getRootMembers().get(0);
 		childMember = rootMember.getChildMembers().get(0);
+		expander = new HierarchyExpander();
 	}
 
 	@Test
@@ -87,8 +89,9 @@ public class QueryHierarchyMethodicTest {
 			System.out.println(st);
 			qh.clear();
 			st.apply(rootMember);
+			expander.setDrills(Arrays.asList(rootMember));
 			assertDrillExpression(notDrilled[i++],
-					qh.toOlap4j(new HierarchyExpander(), Arrays.asList(rootMember)), rootMember);
+					qh.toOlap4j(expander), rootMember);
 		}
 	}
 
@@ -251,7 +254,8 @@ public class QueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(new HierarchyExpander(), Arrays.asList(rootMember)),
+					expander.setDrills(Arrays.asList(rootMember));
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander),
 							rootMember, childMember);
 				}
 			}
@@ -350,7 +354,8 @@ public class QueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(new HierarchyExpander(), Arrays.asList(rootMember,childMember)),
+					expander.setDrills(Arrays.asList(rootMember,childMember));
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander),
 							rootMember, childMember);
 				}
 			}
@@ -421,7 +426,8 @@ public class QueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(new HierarchyExpander(), Arrays.asList(childMember)),
+					expander.setDrills(Arrays.asList(childMember));
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander),
 							rootMember, childMember);
 				}
 			}

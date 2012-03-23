@@ -16,16 +16,10 @@ import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 import es.cgalesanco.olap4j.query.mdx.Mdx;
 import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
-class HierarchyExpanderVisitor implements SelectionNodeVisitor {
+class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 	private AxisExpression expression;
 	private List<Member> undrillList;
 	private List<Level> levels;
-
-	public HierarchyExpanderVisitor(List<Member> drills, List<Level> levels) {
-		expression = new AxisExpression();
-		this.undrillList = drills; 
-		this.levels = levels;
-	}
 
 	@Override
 	public boolean visitEnter(SelectionNode current) {
@@ -272,4 +266,31 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor {
 		}
 	}
 
+	@Override
+	public ParseTreeNode execute(SelectionNode root, List<Level> levels) {
+		expression = new AxisExpression();
+		this.levels = levels;
+		
+		root.accept(this);
+		return expression.getExpression();
+	}
+
+	@Override
+	public boolean isDrilled(Member member) {
+		if (undrillList == null)
+			return true;
+		Member ancestor = member;
+		while (ancestor != null) {
+			if (undrillList.contains(ancestor))
+				return false;
+
+			ancestor = ancestor.getParentMember();
+		}
+		return true;
+	}
+
+	@Override
+	public void setDrills(List<Member> undrills) {
+		this.undrillList = undrills;
+	}
 }

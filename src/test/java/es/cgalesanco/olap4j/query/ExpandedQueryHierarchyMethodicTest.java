@@ -3,7 +3,6 @@ package es.cgalesanco.olap4j.query;
 import static org.junit.Assert.assertEquals;
 
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.junit.Before;
@@ -83,7 +82,7 @@ public class ExpandedQueryHierarchyMethodicTest {
 			System.out.println(st);
 			qh.clear();
 			st.apply(rootMember);
-			assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander, new ArrayList<Member>()), rootMember);
+			assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander), rootMember);
 		}
 	}
 
@@ -104,8 +103,9 @@ public class ExpandedQueryHierarchyMethodicTest {
 			System.out.println(st);
 			qh.clear();
 			st.apply(rootMember);
+			expander.setDrills(Arrays.asList(rootMember));
 			assertDrillExpression(notDrilled[i++],
-					qh.toOlap4j(expander, Arrays.asList(rootMember)), rootMember);
+					qh.toOlap4j(expander), rootMember);
 		}
 	}
 
@@ -126,8 +126,9 @@ public class ExpandedQueryHierarchyMethodicTest {
 			System.out.println(st);
 			qh.clear();
 			st.apply(rootMember);
+			expander.setDrills(Arrays.asList(childMember));
 			assertDrillExpression(notDrilled[i++],
-					qh.toOlap4j(expander, Arrays.asList(childMember)), rootMember, childMember);
+					qh.toOlap4j(expander), rootMember, childMember);
 		}
 	}
 
@@ -148,8 +149,9 @@ public class ExpandedQueryHierarchyMethodicTest {
 			System.out.println(st);
 			qh.clear();
 			st.apply(rootMember);
+			expander.setDrills(Arrays.asList(grandsonMember));
 			assertDrillExpression(notDrilled[i++],
-					qh.toOlap4j(expander, Arrays.asList(grandsonMember)), rootMember, childMember, grandsonMember);
+					qh.toOlap4j(expander), rootMember, childMember, grandsonMember);
 		}
 	}
 	
@@ -245,7 +247,7 @@ public class ExpandedQueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander, new ArrayList<Member>()),
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander),
 							rootMember, childMember);
 				}
 			}
@@ -316,7 +318,8 @@ public class ExpandedQueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander, Arrays.asList(rootMember)),
+					expander.setDrills(Arrays.asList(rootMember));
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander),
 							rootMember, childMember);
 				}
 			}
@@ -415,7 +418,8 @@ public class ExpandedQueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander, Arrays.asList(childMember)),
+					expander.setDrills(Arrays.asList(childMember));
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander),
 							rootMember, childMember);
 				}
 			}
@@ -514,7 +518,8 @@ public class ExpandedQueryHierarchyMethodicTest {
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
 					System.out.println(st1 + "/" + st2);
-					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander, Arrays.asList(grandsonMember)),
+					expander.setDrills(Arrays.asList(grandsonMember));
+					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander),
 							rootMember, childMember, grandsonMember);
 				}
 			}

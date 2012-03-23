@@ -1,6 +1,5 @@
 package es.cgalesanco.olap4j.query;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.junit.Before;
@@ -22,6 +21,7 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 	private static Level childLevel;
 	private static Level grandsonLevel;
 	private QueryHierarchy testHierarchy;
+	private HierarchyExpander expander;
 	
 
 	@BeforeClass
@@ -39,6 +39,7 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 	public void setUp() throws OlapException {
 		Query query = new Query("test", getCube());
 		testHierarchy = query.getHierarchy(baseHierarchy.getName());
+		expander = new HierarchyExpander();
 	}
 	
 	@Test
@@ -52,16 +53,17 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 	@Test
 	public void testOneLevelSelection_rootLevel_drillRoot() throws Exception {
 		testHierarchy.include(rootLevel);
-		 
-		ParseTreeNode exp = testHierarchy.toOlap4j(new HierarchyExpander(), Arrays.asList(rootMember));
+		expander.setDrills(Arrays.asList(rootMember));
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("%1$s.AllMembers", exp, rootLevel);
 	}
 
 	@Test
 	public void testOneLevelSelection_rootLevel_drillChild() throws Exception {
 		testHierarchy.include(rootLevel);
-		 
-		ParseTreeNode exp = testHierarchy.toOlap4j(new HierarchyExpander(), Arrays.asList(childMember));
+		
+		expander.setDrills(Arrays.asList(childMember));
+		ParseTreeNode exp = testHierarchy.toOlap4j(new HierarchyExpander());
 		assertMdx("%1$s.AllMembers", exp, rootLevel);
 	}
 
@@ -74,79 +76,73 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 		testHierarchy.include(childLevel);
 		
 		 
-		ParseTreeNode exp = testHierarchy.toOlap4j(expander, new ArrayList<Member>());
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("Union(%1$s.AllMembers, %2$s.AllMembers)", exp, rootLevel, childLevel);
 	}
 	
 	@Test
 	public void testOneLevelSelection_rootLevel_noDrill_expanded() throws Exception {
-		HierarchyExpander expander = new HierarchyExpander();
 		expander.expandHierarchy();
 		testHierarchy.include(Operator.DESCENDANTS, rootMember);
 		testHierarchy.include(rootLevel);
 		
 		 
-		ParseTreeNode exp = testHierarchy.toOlap4j(expander, new ArrayList<Member>());
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("Union({%1$s}, Union(Descendants(%1$s, 1, SELF_AND_AFTER), Except(%2$s.AllMembers, {%1$s})))", exp, rootMember, rootLevel);
 	}
 	
 	@Test
 	public void testOneLevelSelection_rootLevel_excludedRootBefore_noDrill_expanded() throws Exception {
-		HierarchyExpander expander = new HierarchyExpander();
 		expander.expandHierarchy();
 		testHierarchy.exclude(Operator.DESCENDANTS, rootMember);
 		testHierarchy.include(rootLevel);
 		
 		 
-		ParseTreeNode exp = testHierarchy.toOlap4j(expander, new ArrayList<Member>());
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("Union({%1$s}, Except(%2$s.AllMembers, {%1$s}))", exp, rootMember, rootLevel);
 	}
 
 	@Test
 	public void testOneLevelSelection_rootLevel_excludedRootAfter_noDrill_expanded() throws Exception {
-		HierarchyExpander expander = new HierarchyExpander();
 		expander.expandHierarchy();
 		testHierarchy.include(rootLevel);
 		testHierarchy.exclude(Operator.DESCENDANTS, rootMember);
 		
 		 
-		ParseTreeNode exp = testHierarchy.toOlap4j(expander, new ArrayList<Member>());
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("Except(%2$s.AllMembers, {%1$s})", exp, rootMember, rootLevel);
 	}
 	
 	@Test
 	public void testOneLevelSelection_childLevel_excludedRootChildrenBefore_noDrill_expanded() throws Exception {
-		HierarchyExpander expander = new HierarchyExpander();
 		expander.expandHierarchy();
 		testHierarchy.exclude(Operator.CHILDREN, rootMember);
 		testHierarchy.include(childLevel);
 		
 		 
-		ParseTreeNode exp = testHierarchy.toOlap4j(expander, new ArrayList<Member>());
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("Union(%1$s.Children, Descendants(Except(%2$s.AllMembers, {%1$s}), 1))", exp, rootMember, rootLevel);
 	}
 
 	@Test
 	public void testOneLevelSelection_childLevel_excludedRootChildrenAfter_noDrill_expanded() throws Exception {
-		HierarchyExpander expander = new HierarchyExpander();
 		expander.expandHierarchy();
 		testHierarchy.include(childLevel);
 		testHierarchy.exclude(Operator.CHILDREN, rootMember);
 				
 		 
-		ParseTreeNode exp = testHierarchy.toOlap4j(expander, new ArrayList<Member>());
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("Descendants(Except(%2$s.AllMembers, {%1$s}), 1)", exp, rootMember, rootLevel);
 	}
 	
 	@Test
 	public void testOneLevelSelection_childLevel_includedRootDescendantsBefore_noDrill_expanded() throws Exception {
-		HierarchyExpander expander = new HierarchyExpander();
 		expander.expandHierarchy();
 		testHierarchy.include(Operator.DESCENDANTS, rootMember);
 		testHierarchy.exclude(childLevel);
 				
 		 
-		ParseTreeNode exp = testHierarchy.toOlap4j(expander, new ArrayList<Member>());
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("Union({%1$s}, Descendants(%1$s, 2, SELF_AND_AFTER))", exp, rootMember);
 	}
 	
@@ -155,18 +151,19 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 		HierarchyExpander expander = new HierarchyExpander();
 		testHierarchy.include(rootLevel);
 		testHierarchy.include(childLevel);
-				
-		ParseTreeNode exp = testHierarchy.toOlap4j(expander, Arrays.asList(rootMember));
+	
+		expander.setDrills(Arrays.asList(rootMember));
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("DrilldownMember(%1$s.AllMembers, {%2$s}, RECURSIVE)", exp, rootLevel, rootMember);
 	}
 
 	@Test
 	public void testTwoNonConsecutiveLevelSelection_rootDrill() throws Exception {
-		HierarchyExpander expander = new HierarchyExpander();
 		testHierarchy.include(rootLevel);
 		testHierarchy.include(grandsonLevel);
 				
-		ParseTreeNode exp = testHierarchy.toOlap4j(expander, Arrays.asList(rootMember));
+		expander.setDrills(Arrays.asList(rootMember));
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("Union(%1$s.AllMembers, Descendants({%2$s}, 2))", exp, rootLevel, rootMember);
 	}
 }

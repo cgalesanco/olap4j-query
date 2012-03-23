@@ -399,17 +399,8 @@ class SelectionTree {
 	/**
 	 * Implementation of {@link #toOlap4j()} for query axes.
 	 */
-	ParseTreeNode toOlap4jQuery(HierarchyExpander expander,
-			List<Member> drillList) {
-		if ( expander.isHierarchyExpanded() ) {
-			HierarchyExpanderVisitor visitor = new HierarchyExpanderVisitor(drillList, levels);
-			root.accept(visitor);
-			return visitor.getExpression();
-		} else {
-			HierarchyDrillerVisitor visitor = new HierarchyDrillerVisitor(drillList, levels);
-			root.accept(visitor);
-			return visitor.getExpression();
-		}
+	ParseTreeNode toOlap4jQuery(HierarchyExpander expander) {
+		return expander.expand(root, levels);
 	}
 
 	private List<Level> getIncludedLevels(int sequence) {

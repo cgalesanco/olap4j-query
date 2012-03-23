@@ -16,16 +16,10 @@ import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 import es.cgalesanco.olap4j.query.mdx.Mdx;
 import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
-class HierarchyDrillerVisitor implements SelectionNodeVisitor {
+class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 	private AxisExpression expression;
 	private List<Member> drillList;
 	private List<Level> levels;
-
-	public HierarchyDrillerVisitor(List<Member> drills, List<Level> levels) {
-		expression = new AxisExpression();
-		this.drillList = drills; 
-		this.levels = levels;
-	}
 
 	@Override
 	public boolean visitEnter(SelectionNode current) {
@@ -137,10 +131,6 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor {
 		}
 
 
-	}
-
-	public ParseTreeNode getExpression() {
-		return expression.getExpression();
 	}
 
 	private void drillLevels(SelectionNode root) {
@@ -296,6 +286,34 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor {
 				return l;
 		}
 		return null;
+	}
+
+	@Override
+	public ParseTreeNode execute(SelectionNode root, List<Level> levels) {
+		expression = new AxisExpression();
+		this.levels = levels;
+		root.accept(this);
+		return expression.getExpression();
+	}
+
+	@Override
+	public boolean isDrilled(Member member) {
+		if (drillList == null)
+			return false;
+
+		Member ancestor = member;
+		while (ancestor != null) {
+			if (!drillList.contains(ancestor))
+				return false;
+
+			ancestor = ancestor.getParentMember();
+		}
+		return true;
+	}
+
+	@Override
+	public void setDrills(List<Member> drills) {
+		this.drillList = drills;
 	}
 
 	

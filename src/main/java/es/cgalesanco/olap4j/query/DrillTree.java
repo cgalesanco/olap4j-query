@@ -213,6 +213,7 @@ class DrillTree {
 			List<QueryHierarchy> dimensions, List<HierarchyExpander> expanders) {
 		
 		HierarchyExpander expander = expanders.get(level);
+		expander.setDrills(current.drills);
 		QueryHierarchy h = dimensions.get(level);
 
 		// Creates a list of children to be processed
@@ -220,7 +221,7 @@ class DrillTree {
 		if (current.hasChildren()) {
 			for (Node child : current.children) {
 				if (!h.isIncluded(child.getMember()) || 
-					!expander.isDrilled(child.getMember().getParentMember(), current.drills))
+					!expander.isDrilled(child.getMember().getParentMember()))
 					continue;
 			
 				childrenMembers.add(child.getMember());
@@ -231,12 +232,12 @@ class DrillTree {
 		// any member involved in a larger drill position.
 		CrossJoinBuilder xJoin = new CrossJoinBuilder();
 		xJoin.join(partialExpression);
-		xJoin.join(Mdx.except(h.toOlap4j(expander, current.drills),
+		xJoin.join(Mdx.except(h.toOlap4j(expander),
 				UnionBuilder.fromMembers(childrenMembers)));
 		for (int n = level + 1; n < dimensions.size(); ++n) {
 			HierarchyExpander nextExp = expanders.get(n);
 			QueryHierarchy nh = dimensions.get(n);
-			xJoin.join(nh.toOlap4j(nextExp, null));
+			xJoin.join(nh.toOlap4j(nextExp));
 		}
 		expression.add(xJoin.getJoinNode());
 
