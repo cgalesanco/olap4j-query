@@ -65,7 +65,7 @@ class SelectionTree {
 		 */
 		public SelectionNode() {
 			selectionState = new MemberSelectionState();
-			selectionState.exclude(Operator.DESCENDANTS);
+			selectionState.apply(Sign.EXCLUDE, Operator.DESCENDANTS);
 			overridingChildren = new ArrayList<SelectionNode>();
 			parent = null;
 		}
@@ -300,7 +300,7 @@ class SelectionTree {
 
 		public void clear() {
 			selectionState = new MemberSelectionState();
-			selectionState.exclude(Operator.DESCENDANTS);
+			selectionState.apply(Sign.EXCLUDE, Operator.DESCENDANTS);
 			for (SelectionNode child : overridingChildren) {
 				child.parent = null;
 			}

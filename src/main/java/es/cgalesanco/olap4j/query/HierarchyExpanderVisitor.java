@@ -10,7 +10,6 @@ import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.metadata.Level;
 import org.olap4j.metadata.Member;
 
-import es.cgalesanco.olap4j.query.Selection.Operator;
 import es.cgalesanco.olap4j.query.Selection.Sign;
 import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 import es.cgalesanco.olap4j.query.mdx.Mdx;

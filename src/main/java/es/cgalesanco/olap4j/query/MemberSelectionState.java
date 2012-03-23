@@ -1,5 +1,6 @@
 package es.cgalesanco.olap4j.query;
 
+import java.util.EnumMap;
 import java.util.EnumSet;
 
 import es.cgalesanco.olap4j.query.Selection.Operator;
@@ -7,59 +8,26 @@ import es.cgalesanco.olap4j.query.Selection.Sign;
 
 
 class MemberSelectionState {
-	private EnumSet<Operator> includes;
-	private EnumSet<Operator> excludes;
+	private EnumMap<Operator,Sign> selections;
 
 	public MemberSelectionState() {
-		includes = EnumSet.noneOf(Operator.class);
-		excludes = EnumSet.noneOf(Operator.class);
-	}
-	
-	private EnumSet<Operator> getSetFor(Sign s) {
-		if ( s == Sign.INCLUDE )
-			return includes;
-		return excludes;
+		selections = new EnumMap<Operator,Sign>(Operator.class);
 	}
 	
 	public void apply(Sign s, Operator op) {
-
-		switch (op) {
-		case DESCENDANTS:
-			includes.clear();
-			excludes.clear();
-			getSetFor(s).add(op);
-			break;
-			
-		default:
-			getSetFor(s).add(op);
-			getSetFor(s.opposite()).remove(op);
-			break;
-		}
-	}
-
-	public void include(Operator op) {
-		apply(Sign.INCLUDE, op);
-	}
-
-	public void exclude(Operator op) {
-		apply(Sign.EXCLUDE, op);
+		selections.put(op, s);
 	}
 
 	public void clear(Operator op) {
-		includes.remove(op);
-		excludes.remove(op);
+		selections.remove(op);
 	}
 
 	public Sign getSelectionSign(Operator op) {
-		if ( includes.contains(op))
-			return Sign.INCLUDE;
-		if ( excludes.contains(op))
-			return Sign.EXCLUDE;
-		return null;
+		return selections.get(op);
 	}
 
 	public boolean isNull() {
-		return includes.isEmpty() && excludes.isEmpty();
+		return selections.isEmpty();
 	}
 
 }
