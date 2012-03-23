@@ -402,11 +402,11 @@ class SelectionTree {
 	ParseTreeNode toOlap4jQuery(HierarchyExpander expander,
 			List<Member> drillList) {
 		if ( expander.isHierarchyExpanded() ) {
-			HierarchyExpanderVisitor visitor = new HierarchyExpanderVisitor(drillList, expander, levels);
+			HierarchyExpanderVisitor visitor = new HierarchyExpanderVisitor(drillList, levels);
 			root.accept(visitor);
 			return visitor.getExpression();
 		} else {
-			HierarchyDrillerVisitor visitor = new HierarchyDrillerVisitor(drillList, expander, levels);
+			HierarchyDrillerVisitor visitor = new HierarchyDrillerVisitor(drillList, levels);
 			root.accept(visitor);
 			return visitor.getExpression();
 		}

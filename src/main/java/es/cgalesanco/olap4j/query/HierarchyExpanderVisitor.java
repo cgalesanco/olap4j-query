@@ -1,6 +1,8 @@
 package es.cgalesanco.olap4j.query;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -17,13 +19,11 @@ import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 class HierarchyExpanderVisitor implements SelectionNodeVisitor {
 	private AxisExpression expression;
 	private List<Member> undrillList;
-	private HierarchyExpander expander;
 	private List<Level> levels;
 
-	public HierarchyExpanderVisitor(List<Member> drills, HierarchyExpander expander, List<Level> levels) {
+	public HierarchyExpanderVisitor(List<Member> drills, List<Level> levels) {
 		expression = new AxisExpression();
 		this.undrillList = drills; 
-		this.expander = expander;
 		this.levels = levels;
 	}
 
@@ -96,9 +96,8 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor {
 							UnionBuilder.fromMembers(overridedMembers)), 1,
 							"SELF_AND_AFTER"));
 				}
-				expander.expand(expansionRoots, undrillList,
-						current.getExcludedLevels(),
-						expression);
+				collapseUndrills(expansionRoots,
+						current.getExcludedLevels());
 			} else {
 				ChildrenMemberSet expansionRoots = new ChildrenMemberSet(
 						currentMember, overridedMembers);
@@ -111,9 +110,8 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor {
 							UnionBuilder.fromMembers(overridedMembers)), 0,
 							"SELF_AND_AFTER"));
 				} 
-				expander.expand(expansionRoots, undrillList,
-						current.getExcludedLevels(),
-						expression);
+				collapseUndrills(expansionRoots,
+						current.getExcludedLevels());
 			}
 		} else {
 			if (childrenSign == Sign.INCLUDE) {
@@ -127,11 +125,8 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor {
 				List<Level> includedLevels = current.getIncludedLevels();
 				Level fromLevel = currentMember.getLevel();
 				if ( fromLevel.getDepth()+2 < levels.size() ) {
-					expander.expandLevels(
-							new GrandchildrenSet(currentMember, overridedMembers),
-							undrillList, 
-							includedLevels, 
-							expression);
+					collapseLevelUndrills(new GrandchildrenSet(currentMember, overridedMembers),
+							includedLevels); 
 				}
 			} else { 
 				Level fromLevel = currentMember.getLevel();
@@ -147,8 +142,8 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor {
 				
 				if ( iLevel > levels.size() )
 					return;
-				
-				expander.expandLevels(new DescendantsSet(currentMember, fromLevel), undrillList, actuallyIncludedLevels, expression);
+
+				collapseLevelUndrills(new DescendantsSet(currentMember, fromLevel), actuallyIncludedLevels);
 			}
 		}
 	}
@@ -198,5 +193,83 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor {
 	public ParseTreeNode getExpression() {
 		return expression.getExpression();
 	}
-	
+
+	private void collapseUndrills(MemberSet roots, List<Level> excludedLevels) {
+		List<Member> rootUndrills = new ArrayList<Member>(undrillList);
+		Collections.sort(rootUndrills, new Comparator<Member>() {
+			@Override
+			public int compare(Member arg0, Member arg1) {
+				return arg0.getDepth() - arg1.getDepth();
+			}
+		});
+		 
+		CollectionMemberSet processed = new CollectionMemberSet();
+		Iterator<Member> itFiltered = rootUndrills.iterator();
+		while( itFiltered.hasNext() ) {
+			Member m = itFiltered.next();
+			if ( !roots.containsAncestorOf(m) )
+				continue;
+			if ( processed.containsAncestorOf(m)) 
+				continue;
+			if ( excludedLevels.contains(m.getLevel()) )
+				continue;
+					
+			expression.undrill(Mdx.member(m));
+			undrillList.remove(m);
+			processed.add(m);
+		}
+		
+		Level currentLevel = roots.getLevel();
+		List<Level> levels = currentLevel.getHierarchy().getLevels();
+		for (int iLevel = currentLevel.getDepth() + 1; iLevel < levels.size(); ++iLevel) {
+			if (excludedLevels.contains(levels.get(iLevel))) {
+				expression.exclude(Mdx.descendants(roots.getMdx(), iLevel));
+			} 
+		}
+	}
+
+	private void collapseLevelUndrills(MemberSet roots,
+			List<Level> includedLevels) {
+		Level fromLevel = roots.getLevel();
+		List<Member> nextUndrills = new ArrayList<Member>();
+		Iterator<Member> undrillIt = undrillList.iterator();
+		while( undrillIt.hasNext() ) {
+			Member drill = undrillIt.next();
+			if ( roots.containsAncestorOf(drill) ) {
+				nextUndrills.add(drill);
+				undrillIt.remove();
+			}
+		}
+
+		Level currentLevel = fromLevel;
+		List<Level> levels = currentLevel.getHierarchy().getLevels();
+		for(int iLevel = currentLevel.getDepth(); iLevel < levels.size(); ++iLevel ) {
+			Level nextLevel = levels.get(iLevel);
+			if ( includedLevels.contains(nextLevel)) {
+				expression.include(
+						Mdx.descendants(
+								Mdx.except(
+										roots.getMdx(), 
+										UnionBuilder.fromMembers(nextUndrills)
+								), 
+								iLevel-fromLevel.getDepth()
+						)
+				);
+				
+				undrillIt = undrillList.iterator();
+				nextUndrills.clear();
+				while( undrillIt.hasNext() ) {
+					Member undrill = undrillIt.next();
+					
+					if ( undrill.getLevel().getDepth() == iLevel &&
+							roots.containsAncestorOf(undrill) ) {
+						nextUndrills.add(undrill);
+					}
+				}
+				
+				currentLevel = nextLevel;
+			}
+		}
+	}
+
 }

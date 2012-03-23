@@ -1,8 +1,10 @@
 package es.cgalesanco.olap4j.query;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.metadata.Level;
@@ -17,13 +19,11 @@ import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 class HierarchyDrillerVisitor implements SelectionNodeVisitor {
 	private AxisExpression expression;
 	private List<Member> drillList;
-	private HierarchyExpander expander;
 	private List<Level> levels;
 
-	public HierarchyDrillerVisitor(List<Member> drills, HierarchyExpander expander, List<Level> levels) {
+	public HierarchyDrillerVisitor(List<Member> drills, List<Level> levels) {
 		expression = new AxisExpression();
 		this.drillList = drills; 
-		this.expander = expander;
 		this.levels = levels;
 	}
 
@@ -89,9 +89,7 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor {
 				} else {
 					expression.include(expansionRoots.getMdx());
 				}
-				expander.expand(expansionRoots, drillList,
-						current.getExcludedLevels(),
-						expression);
+				expandDrills(expansionRoots, current.getExcludedLevels());
 			} else {
 				ChildrenMemberSet expansionRoots = new ChildrenMemberSet(
 				currentMember, overridedMembers);
@@ -100,9 +98,8 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor {
 				} else {
 					expression.include(Mdx.children(currentMember));
 				}
-				expander.expand(expansionRoots, drillList,
-						current.getExcludedLevels(),
-						expression);
+				expandDrills(expansionRoots, 
+						current.getExcludedLevels());
 			}
 		} else {
 			if (childrenSign == Sign.INCLUDE) {
@@ -116,11 +113,9 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor {
 				List<Level> includedLevels = current.getIncludedLevels();
 				Level fromLevel = currentMember.getLevel();
 				if ( fromLevel.getDepth()+2 < levels.size() ) {
-					expander.expandLevels(
+					expandLevelDrills(
 							new GrandchildrenSet(currentMember, overridedMembers),
-							drillList, 
-							includedLevels, 
-							expression);
+							includedLevels); 
 				}
 			} else {
 				Level fromLevel = currentMember.getLevel();
@@ -137,7 +132,7 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor {
 				if ( iLevel > levels.size() )
 					return;
 				
-				expander.expandLevels(new DescendantsSet(currentMember, fromLevel), drillList, actuallyIncludedLevels, expression);
+				expandLevelDrills(new DescendantsSet(currentMember, fromLevel), actuallyIncludedLevels);
 			}
 		}
 
@@ -192,4 +187,116 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor {
 					drilledRoots.toArray(new Member[drilledRoots.size()]));
 		}
 	}
+
+	private void expandDrills(MemberSet roots, List<Level> levelExclusions) {
+		Set<Member> previousDrill = new HashSet<Member>();
+		Set<Member> nextDrill;
+
+		Iterator<Member> itM = drillList.iterator();
+		nextDrill = new HashSet<Member>();
+		while (itM.hasNext()) {
+			Member m = itM.next();
+			if (roots.contains(m)) {
+				previousDrill.add(m);
+				expression.drill(Mdx.member(m));
+				itM.remove();
+			}
+		}
+
+		if (previousDrill.isEmpty())
+			return;
+
+		Level currentLevel = previousDrill.iterator().next().getLevel();
+		List<Level> levels = currentLevel.getHierarchy().getLevels();
+		Level nextLevel = findNextLevel(levels, currentLevel.getDepth(),
+				levelExclusions);
+
+		List<Member> effectiveDrills = new ArrayList<Member>();
+		while (!previousDrill.isEmpty() && nextLevel != null) {
+			nextDrill = new HashSet<Member>();
+			int levelDistance = nextLevel.getDepth() - currentLevel.getDepth();
+
+			itM = drillList.iterator();
+			effectiveDrills.clear();
+			MemberSet previousSet = new CollectionMemberSet(
+					previousDrill.toArray(new Member[previousDrill.size()]));
+			while (itM.hasNext()) {
+				Member m = itM.next();
+				if (m.getLevel().equals(nextLevel)
+						&& previousSet.containsAncestorOf(m)) {
+					effectiveDrills.add(m);
+					itM.remove();
+					nextDrill.add(m);
+				}
+			}
+
+			if (levelDistance == 1) {
+				expression.drill(UnionBuilder.fromMembers(effectiveDrills));
+			} else {
+				expression.include(Mdx.descendants(
+						UnionBuilder.fromMembers(effectiveDrills),
+						levelDistance));
+			}
+
+			previousDrill = nextDrill;
+			currentLevel = nextLevel;
+			nextLevel = findNextLevel(levels, currentLevel.getDepth(),
+					levelExclusions);
+		}
+	}
+
+	private void expandLevelDrills(MemberSet roots,
+			List<Level> includedLevels) {
+		List<Member> nextDrills = new ArrayList<Member>();
+		Iterator<Member> drillIt = drillList.iterator();
+		while( drillIt.hasNext() ) {
+			Member drill = drillIt.next();
+			if ( roots.contains(drill) ) {
+				nextDrills.add(drill);
+				drillIt.remove();
+			}
+		}
+
+		if ( nextDrills.isEmpty() )
+			return;
+		
+		Level currentLevel = nextDrills.iterator().next().getLevel();
+		List<Level> levels = currentLevel.getHierarchy().getLevels();
+		for(int iLevel = currentLevel.getDepth(); iLevel < levels.size(); ++iLevel ) {
+			Level nextLevel = levels.get(iLevel);
+			if ( includedLevels.contains(nextLevel)) {
+				if ( iLevel == currentLevel.getDepth()+1 ) {
+					expression.drill(UnionBuilder.fromMembers(nextDrills));
+				} else {
+					expression.include(Mdx.descendants(UnionBuilder.fromMembers(nextDrills), iLevel));
+				}
+				
+				drillIt = drillList.iterator();
+				roots = new CollectionMemberSet(nextDrills.toArray(new Member[nextDrills.size()]));
+				nextDrills.clear();
+				while( drillIt.hasNext() ) {
+					Member drill = drillIt.next();
+					
+					if ( drill.getLevel().getDepth() == iLevel &&
+							roots.containsAncestorOf(drill) ) {
+						nextDrills.add(drill);
+					}
+				}
+				
+				currentLevel = nextLevel;
+			}
+		}
+	}
+
+	private Level findNextLevel(List<Level> levels, int depth,
+			List<Level> levelExclusions) {
+		for (int i = depth + 1; i < levels.size(); ++i) {
+			Level l = levels.get(i);
+			if (!levelExclusions.contains(l))
+				return l;
+		}
+		return null;
+	}
+
+	
 }
