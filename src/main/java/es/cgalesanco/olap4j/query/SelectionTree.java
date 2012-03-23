@@ -6,7 +6,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.SortedMap;
+import java.util.NavigableMap;
 import java.util.Stack;
 import java.util.TreeMap;
 
@@ -23,8 +23,7 @@ import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 class SelectionTree {
 	private SelectionNode root;
 	private List<Level> levels;
-	private SortedMap<Level, Integer> includedLevels;
-	private SortedMap<Level, Integer> excludedLevels;
+	private NavigableMap<Level, SelectionInfo> levelSelections;
 	private int currentSequence;
 	
 	private static class LevelComparator implements Comparator<Level> {
@@ -40,8 +39,7 @@ class SelectionTree {
 	public SelectionTree(List<Level> levels) {
 		root = new SelectionNode();
 		this.levels = levels;
-		includedLevels = new TreeMap<Level, Integer>(new LevelComparator());
-		excludedLevels = new TreeMap<Level, Integer>(new LevelComparator());
+		levelSelections = new TreeMap<Level, SelectionInfo>(new LevelComparator());
 		currentSequence = 0;
 
 	}
@@ -262,8 +260,7 @@ class SelectionTree {
 
 	public void clear() {
 		root.clear();
-		includedLevels.clear();
-		excludedLevels.clear();
+		levelSelections.clear();
 		currentSequence = 0;
 	}
 	/**
@@ -275,7 +272,7 @@ class SelectionTree {
 	 * @return the effective selections for this Query.
 	 */
 	public List<Selection> listSelections() {
-		SelectionListBuilder builder = new SelectionListBuilder(includedLevels, excludedLevels);
+		SelectionListBuilder builder = new SelectionListBuilder(levelSelections);
 		for (SelectionNode r : root.getOverridingChildren())
 			listSelections(builder, r); 
 		return builder.getResult();
@@ -384,7 +381,7 @@ class SelectionTree {
 	}
 
 	private void drillLevels(AxisExpression expression, List<Member> drillList) {
-		Iterator<Level> itLevels = includedLevels.keySet().iterator();
+		Iterator<Level> itLevels = getIncludedLevels(0).iterator();
 		if (!itLevels.hasNext())
 			return;
 
@@ -429,7 +426,7 @@ class SelectionTree {
 	}
 
 	private void expandLevels(AxisExpression expression, List<Member> undrillList) {
-		Iterator<Level> itLevels = includedLevels.keySet().iterator();
+		Iterator<Level> itLevels = getIncludedLevels(0).iterator();
 		if (!itLevels.hasNext())
 			return;
 
@@ -640,8 +637,8 @@ class SelectionTree {
 
 	private List<Level> getIncludedLevels(int sequence) {
 		List<Level> levels = new ArrayList<Level>();
-		for (Entry<Level, Integer> eLevel : includedLevels.entrySet()) {
-			if (eLevel.getValue() >= sequence)
+		for (Entry<Level, SelectionInfo> eLevel : levelSelections.entrySet()) {
+			if (eLevel.getValue().getSign() == Sign.INCLUDE && eLevel.getValue().getSequence() >= sequence)
 				levels.add(eLevel.getKey());
 		}
 		return levels;
@@ -649,8 +646,8 @@ class SelectionTree {
 
 	private List<Level> getExcludedLevels(int sequence) {
 		List<Level> levels = new ArrayList<Level>();
-		for (Entry<Level, Integer> eLevel : excludedLevels.entrySet()) {
-			if (eLevel.getValue() >= sequence)
+		for (Entry<Level, SelectionInfo> eLevel : levelSelections.entrySet()) {
+			if (eLevel.getValue().getSign() == Sign.EXCLUDE && eLevel.getValue().getSequence() >= sequence)
 				levels.add(eLevel.getKey());
 		}
 		return levels;
@@ -673,13 +670,7 @@ class SelectionTree {
 
 	void applyLevel(Level level, Sign s) {
 		int seq = ++currentSequence;
-		if (s == Sign.INCLUDE) {
-			includedLevels.put(level, seq);
-			excludedLevels.remove(level);
-		} else {
-			excludedLevels.put(level, seq);
-			includedLevels.remove(level);
-		}
+		levelSelections.put(level, new SelectionInfo(s, seq));
 
 		applyLevelAction(this.root, level.getDepth()+1, s);
 	}
@@ -782,17 +773,15 @@ class SelectionTree {
 			memberInfo = memberInfo.createOverridingChild(m);
 			
 			Level memberLevel = m.getLevel();
-			if ( includedLevels.containsKey(memberLevel) )
-				memberInfo.getStatus().include(Operator.MEMBER);
-			if ( excludedLevels.containsKey(memberLevel))
-				memberInfo.getStatus().exclude(Operator.MEMBER);
+			SelectionInfo affectedLevel = levelSelections.get(memberLevel);
+			if ( affectedLevel != null )
+				memberInfo.getStatus().apply(affectedLevel.getSign(), Operator.MEMBER);
 			
 			if ( memberLevel.getDepth() + 1 < levels.size()) {
 				Level childrenLevel = levels.get(memberLevel.getDepth()+1);
-				if ( includedLevels.containsKey(childrenLevel)) 
-					memberInfo.getStatus().include(Operator.CHILDREN);
-				if ( excludedLevels.containsKey(childrenLevel))
-					memberInfo.getStatus().exclude(Operator.CHILDREN);				
+				affectedLevel = levelSelections.get(childrenLevel);
+				if ( affectedLevel != null )
+					memberInfo.getStatus().apply(affectedLevel.getSign(), Operator.CHILDREN);
 			}
 		}
 		if (action.getOperator() == Operator.MEMBER
@@ -837,8 +826,10 @@ class SelectionTree {
 		Member visitMember = visitInfo.getMember();
 		if (!member.equals(visitMember)) {
 			if ( visitInfo.getDefaultSign() == Sign.EXCLUDE ) {
-				for(Entry<Level,Integer> iLevel : includedLevels.entrySet() ) {
-					if ( iLevel.getValue() > visitInfo.getSequence() &&
+				for(Entry<Level,SelectionInfo> iLevel : levelSelections.entrySet() ) {
+					if ( iLevel.getValue().getSign() != Sign.INCLUDE )
+						continue;
+					if ( iLevel.getValue().getSequence() > visitInfo.getSequence() &&
 							iLevel.getKey().getDepth() > member.getLevel().getDepth() )
 						return false;
 				}
@@ -846,8 +837,8 @@ class SelectionTree {
 			} else {
 				for(int i = member.getLevel().getDepth()+1; i < levels.size(); ++i) {
 					Level l = levels.get(i);
-					Integer levelSequence = excludedLevels.get(l);
-					if ( levelSequence == null || levelSequence <= visitInfo.getSequence() )
+					SelectionInfo levelSelection = levelSelections.get(l);
+					if ( levelSelection == null  || levelSelection.getSequence() <= visitInfo.getSequence() )
 						return false;
 				}
 				return true;

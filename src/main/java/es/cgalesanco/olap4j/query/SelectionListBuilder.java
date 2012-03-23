@@ -6,7 +6,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.SortedMap;
+import java.util.NavigableMap;
 
 import org.olap4j.metadata.Level;
 import org.olap4j.metadata.Member;
@@ -53,15 +53,12 @@ class SelectionListBuilder {
 	private List<SelectionAction> initialActions;
 	private List<LevelAction> levelActions;
 	
-	public SelectionListBuilder(SortedMap<Level,Integer> includes, SortedMap<Level,Integer> excludes) {
-		levelActions = new ArrayList<LevelAction>(includes.size()+excludes.size());
+	public SelectionListBuilder(NavigableMap<Level,SelectionInfo> levelSelections) {
+		levelActions = new ArrayList<LevelAction>(levelSelections.size());
 		initialActions = new ArrayList<SelectionAction>();
 		
-		for(Entry<Level,Integer> e : includes.entrySet()) {
-			levelActions.add(new LevelAction(e.getKey(), Sign.INCLUDE, e.getValue()));
-		}
-		for(Entry<Level,Integer> e : excludes.entrySet()) {
-			levelActions.add(new LevelAction(e.getKey(), Sign.EXCLUDE, e.getValue()));
+		for(Entry<Level,SelectionInfo> e : levelSelections.entrySet()) {
+			levelActions.add(new LevelAction(e.getKey(), e.getValue().getSign(), e.getValue().getSequence()));
 		}
 		
 		Collections.sort(levelActions, new Comparator<LevelAction>(){
