@@ -3,6 +3,7 @@ package es.cgalesanco.olap4j.query;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
@@ -53,7 +54,7 @@ class SelectionTree {
 	 */
 	class SelectionNode {
 
-		private MemberSelectionState selectionState;
+		private EnumMap<Operator, Sign> selections;
 		private Member member;
 		private List<SelectionNode> overridingChildren;
 		private SelectionNode parent;
@@ -64,15 +65,15 @@ class SelectionTree {
 		 * selected.
 		 */
 		public SelectionNode() {
-			selectionState = new MemberSelectionState();
-			selectionState.apply(Sign.EXCLUDE, Operator.DESCENDANTS);
+			selections = new EnumMap<Operator,Sign>(Operator.class);
+			selections.put(Operator.DESCENDANTS, Sign.EXCLUDE);
 			overridingChildren = new ArrayList<SelectionNode>();
 			parent = null;
 		}
 
 		protected SelectionNode(SelectionNode parent, Member m) {
 			member = m;
-			selectionState = new MemberSelectionState();
+			selections = new EnumMap<Operator,Sign>(Operator.class);
 			overridingChildren = new ArrayList<SelectionNode>();
 			this.parent = parent;
 		}
@@ -95,22 +96,22 @@ class SelectionTree {
 		}
 		
 		private void applyMember(Sign s) {
-			getStatus().clear(Operator.MEMBER);
+			selections.remove(Operator.MEMBER);
 			if ( getMemberSign() == s )
 				return;
 			
-			getStatus().apply(s, Operator.MEMBER);
+			selections.put(Operator.MEMBER, s);
 		}
 		
 		private void applyChildren(Sign s) {
-			getStatus().clear(Operator.CHILDREN);
+			selections.remove(Operator.CHILDREN);
 			if ( getChildrenSign() != s )
-				getStatus().apply(s, Operator.CHILDREN);
-			
+				selections.put(Operator.CHILDREN, s);
+			 
 			Iterator<SelectionNode> itChilds = overridingChildren.iterator();
 			while(itChilds.hasNext()) {
 				SelectionNode child = itChilds.next();
-				child.getStatus().clear(Operator.MEMBER);
+				child.selections.remove(Operator.MEMBER);
 				if ( child.isVoid() ) {
 					child.parent = null;
 					itChilds.remove();
@@ -119,12 +120,10 @@ class SelectionTree {
 		}
 		
 		private void applyDescendants(Sign s) {
-			getStatus().clear(Operator.DESCENDANTS);
-			getStatus().clear(Operator.CHILDREN);
-			getStatus().clear(Operator.MEMBER);
+			selections.clear();
 			
 			if ( getDefaultSign() != s || getMemberSign() != s || getChildrenSign() != s) {
-				getStatus().apply(s, Operator.DESCENDANTS);
+				selections.put(Operator.DESCENDANTS, s);
 				sequence = currentSequence;
 			}
 			
@@ -138,17 +137,17 @@ class SelectionTree {
 		
 		public Sign getMemberSign() {
 			Sign s;
-			if ( (s = getStatus().getSelectionSign(Operator.MEMBER)) != null )
+			if ( (s = selections.get(Operator.MEMBER)) != null )
 				return s;
 			
 			SelectionInfo levelInfo = levelSelections.get(getMemberLevel());
-			Sign descendantsSign = getStatus().getSelectionSign(Operator.DESCENDANTS);
+			Sign descendantsSign = selections.get(Operator.DESCENDANTS);
 			if ( descendantsSign != null ) {
 				if ( levelInfo == null || levelInfo.getSequence() <= getSequence())
 					return descendantsSign;
 			}
 			
-			if ( parent != null && (s = parent.getStatus().getSelectionSign(Operator.CHILDREN)) != null ) {
+			if ( parent != null && (s = parent.selections.get(Operator.CHILDREN)) != null ) {
 				return s;
 			}
 			
@@ -166,12 +165,12 @@ class SelectionTree {
 		}
 
 		public Sign getChildrenSign() {
-			Sign s = getStatus().getSelectionSign(Operator.CHILDREN);
+			Sign s = selections.get(Operator.CHILDREN);
 			if ( s != null )
 				return s;
 			
 			SelectionInfo levelInfo = levelSelections.get(getChildrenLevel());
-			Sign descendantsSign = getStatus().getSelectionSign(Operator.DESCENDANTS);
+			Sign descendantsSign = selections.get(Operator.DESCENDANTS);
 			if ( descendantsSign != null ) {
 				if ( levelInfo == null || levelInfo.getSequence() <= getSequence())
 					return descendantsSign;
@@ -196,21 +195,12 @@ class SelectionTree {
 		private int getDefaultSequence() {
 			SelectionNode n = this;
 			while( n != null ) {
-				if ( n.getStatus().getSelectionSign(Operator.DESCENDANTS) != null )
+				if ( n.selections.get(Operator.DESCENDANTS) != null )
 					return n.getSequence();
 				
 				n = n.getParent();
 			}
 			return 0;
-		}
-
-		/**
-		 * Returns the selection state for this node.
-		 * 
-		 * @return the selection state for this node.
-		 */
-		public MemberSelectionState getStatus() {
-			return selectionState;
 		}
 
 		/**
@@ -221,7 +211,7 @@ class SelectionTree {
 		 * @return a value indicating if this node is superflous.
 		 */
 		public boolean isVoid() {
-			return overridingChildren.isEmpty() && getStatus().isNull();
+			return overridingChildren.isEmpty() && selections.isEmpty();
 		}
 
 		/**
@@ -267,31 +257,31 @@ class SelectionTree {
 		 * @return the list of Selections.
 		 */
 		public Collection<? extends Selection> listSelections() {
-			List<Selection> selections = new ArrayList<Selection>();
+			List<Selection> list = new ArrayList<Selection>();
 
-			Sign sign = getStatus().getSelectionSign(Operator.DESCENDANTS);
+			Sign sign = selections.get(Operator.DESCENDANTS);
 			if (sign != null)
-				selections.add(new SelectionAction(getMember(), sign,
+				list.add(new SelectionAction(getMember(), sign,
 						Operator.DESCENDANTS));
 
-			Sign childSign = getStatus().getSelectionSign(Operator.CHILDREN);
-			Sign memberSign = getStatus().getSelectionSign(Operator.MEMBER);
+			Sign childSign = selections.get(Operator.CHILDREN);
+			Sign memberSign = selections.get(Operator.MEMBER);
 			if (childSign != null) {
 				if (childSign == memberSign) {
-					selections.add(new SelectionAction(getMember(), childSign,
+					list.add(new SelectionAction(getMember(), childSign,
 							Operator.INCLUDE_CHILDREN));
 					memberSign = null;
 				} else
-					selections.add(new SelectionAction(getMember(), childSign,
+					list.add(new SelectionAction(getMember(), childSign,
 							Operator.CHILDREN));
 			}
 
 			if (memberSign != null) {
-				selections.add(new SelectionAction(getMember(), memberSign,
+				list.add(new SelectionAction(getMember(), memberSign,
 						Operator.MEMBER));
 			}
 
-			return selections;
+			return list;
 		}
 
 		public boolean hasOverridingChildren() {
@@ -299,8 +289,8 @@ class SelectionTree {
 		}
 
 		public void clear() {
-			selectionState = new MemberSelectionState();
-			selectionState.apply(Sign.EXCLUDE, Operator.DESCENDANTS);
+			selections.clear();
+			selections.put(Operator.DESCENDANTS, Sign.EXCLUDE);
 			for (SelectionNode child : overridingChildren) {
 				child.parent = null;
 			}
@@ -311,8 +301,7 @@ class SelectionTree {
 			SelectionNode prev = this;
 			Sign s = null;
 			while (prev != null
-					&& (s = prev.selectionState
-							.getSelectionSign(Operator.DESCENDANTS)) == null) {
+					&& (s = prev.selections.get(Operator.DESCENDANTS)) == null) {
 				prev = prev.parent;
 			}
 			return s;
@@ -382,6 +371,10 @@ class SelectionTree {
 
 				n = p;
 			}
+		}
+
+		public Sign getSelectionSign(Operator op) {
+			return selections.get(op);
 		}
 
 	}
@@ -543,12 +536,12 @@ class SelectionTree {
 
 	private void applyLevelAction(SelectionNode selection, int depth, Sign s) {
 		if (depth == 0) {
-			selection.getStatus().clear(Operator.MEMBER);
+			selection.selections.get(Operator.MEMBER);
 			return;
 		}
 
 		if (depth == 1) {
-			selection.getStatus().clear(Operator.CHILDREN);
+			selection.selections.get(Operator.CHILDREN);
 		}
 
 		for (SelectionNode child : selection.getOverridingChildren()) {

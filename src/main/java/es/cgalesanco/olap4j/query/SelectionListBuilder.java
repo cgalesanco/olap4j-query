@@ -69,7 +69,6 @@ class SelectionListBuilder {
 	}
 	
 	public void addSelections(SelectionNode node) {
-		MemberSelectionState state = node.getStatus();
 		Level thisLevel = node.getMember().getLevel();
 		Level previousLevel = null;
 		if ( thisLevel.getDepth() > 0 )
@@ -80,13 +79,13 @@ class SelectionListBuilder {
 		
 		LevelAction descendantsLevel = null;
 		Sign sign = null;
-		if ( (sign = state.getSelectionSign(Operator.DESCENDANTS)) != null ) {
+		if ( (sign = node.getSelectionSign(Operator.DESCENDANTS)) != null ) {
 			descendantsLevel = findLevelForSequence(node.getSequence());
 			selections.add(new SelectionAction(node.getMember(), sign, Operator.DESCENDANTS));
 		}
 		
 		LevelAction childrenLevel = null;
-		if ( (sign = state.getSelectionSign(Operator.CHILDREN)) != null ) {
+		if ( (sign = node.getSelectionSign(Operator.CHILDREN)) != null ) {
 			LevelAction previousAction = findLevel(previousLevel);
 			if ( previousAction == null ) { 
 				selections.add(new SelectionAction(node.getMember(), sign, Operator.CHILDREN));
@@ -97,7 +96,7 @@ class SelectionListBuilder {
 		}
 		
 		LevelAction memberLevel = null;
-		if ( (sign = state.getSelectionSign(Operator.MEMBER)) != null ) {
+		if ( (sign = node.getSelectionSign(Operator.MEMBER)) != null ) {
 			LevelAction thisAction = findLevel(thisLevel);
 			if ( thisAction == null ) {
 				selections.add(new SelectionAction(node.getMember(), sign, Operator.MEMBER));
