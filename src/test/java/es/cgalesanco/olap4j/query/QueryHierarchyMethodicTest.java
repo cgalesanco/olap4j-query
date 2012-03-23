@@ -150,10 +150,10 @@ public class QueryHierarchyMethodicTest {
 		for (State st1 : State.values()) {
 			for (State st2 : State.values()) {
 				qh.clear();
+				System.out.println(st1 + "/" + st2);
 				st1.apply(rootMember);
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
-					System.out.println(st1 + "/" + st2);
 					assertDrillExpression(notDrilled[i++], qh.toOlap4j(),
 							rootMember, childMember);
 				}

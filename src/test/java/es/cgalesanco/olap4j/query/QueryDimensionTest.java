@@ -101,7 +101,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.MEMBER)}; 
 		testSelection("Same Member: IM,ID", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.MEMBER)
 				},
 				user
 				);
@@ -114,7 +113,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN)}; 
 		testSelection("Same Member: IM,ID", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN),
 					new SelectionAction(rootMember, Sign.INCLUDE, Operator.MEMBER),
 				},
 				user
@@ -128,7 +126,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.INCLUDE_CHILDREN)}; 
 		testSelection("Same Member: IM,ID", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.INCLUDE_CHILDREN)
 				},
 				user
 				);
@@ -141,7 +138,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ID", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -210,7 +206,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN)
 				},
 				user
 				);
@@ -224,7 +219,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.INCLUDE_CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN)
 				},
 				user
 				);
@@ -238,7 +232,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -293,7 +286,6 @@ public class QueryDimensionTest {
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
 					new SelectionAction(rootMember, Sign.INCLUDE, Operator.CHILDREN),
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.MEMBER)
 				},
 				user
 				);
@@ -332,7 +324,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN),
 					new SelectionAction(rootMember, Sign.INCLUDE, Operator.MEMBER),
 				},
 				user
@@ -346,7 +337,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -474,7 +464,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS),
 				},
 				user
 				);
@@ -489,7 +478,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.INCLUDE, Operator.MEMBER)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN),
 					new SelectionAction(rootMember, Sign.INCLUDE, Operator.MEMBER),
 				},
 				user
@@ -559,7 +547,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS),
 				},
 				user
 				);
@@ -574,7 +561,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.INCLUDE, Operator.MEMBER)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN),
 					new SelectionAction(rootMember, Sign.INCLUDE, Operator.MEMBER),
 				},
 				user
@@ -590,7 +576,6 @@ public class QueryDimensionTest {
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
 					new SelectionAction(rootMember, Sign.INCLUDE, Operator.DESCENDANTS),
-					new SelectionAction(childMember, Sign.INCLUDE, Operator.CHILDREN),
 					new SelectionAction(childMember, Sign.EXCLUDE, Operator.MEMBER)
 				},
 				user
@@ -632,7 +617,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -662,7 +646,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.INCLUDE, Operator.MEMBER)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS),
 					new SelectionAction(rootMember, Sign.INCLUDE, Operator.MEMBER)
 				},
 				user
@@ -676,7 +659,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.INCLUDE, Operator.CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS),
 					new SelectionAction(rootMember, Sign.INCLUDE, Operator.CHILDREN)
 				},
 				user
@@ -690,7 +672,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.INCLUDE, Operator.INCLUDE_CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS),
 					new SelectionAction(rootMember, Sign.INCLUDE, Operator.INCLUDE_CHILDREN)
 				},
 				user
@@ -704,7 +685,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.MEMBER)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -717,7 +697,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -730,7 +709,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.INCLUDE_CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -786,7 +764,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.MEMBER)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.INCLUDE_CHILDREN)
 				},
 				user
 				);
@@ -800,7 +777,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.INCLUDE_CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.INCLUDE_CHILDREN)
 				},
 				user
 				);
@@ -814,7 +790,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -915,7 +890,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -1031,7 +1005,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)
 				},
 				user
 				);
@@ -1155,7 +1128,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS),
 				},
 				user
 				);
@@ -1466,7 +1438,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN),
 				},
 				user
 				);
@@ -1479,7 +1450,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS),
 				},
 				user
 				);
@@ -1533,7 +1503,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.CHILDREN), 
 					new SelectionAction(childMember, Sign.INCLUDE, Operator.CHILDREN),
 				},
 				user
@@ -1547,7 +1516,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS),
 				},
 				user
 				);
@@ -1587,7 +1555,6 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
-					new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS), 
 				},
 				user
 				);

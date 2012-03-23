@@ -31,12 +31,8 @@ class MemberSelectionState {
 			break;
 			
 		default:
-			if (s != getSelectionSign(Operator.DESCENDANTS)) {
-				getSetFor(s).add(op);
-				getSetFor(s.opposite()).remove(op);
-			} else {
-				clear(op);
-			}
+			getSetFor(s).add(op);
+			getSetFor(s.opposite()).remove(op);
 			break;
 		}
 	}

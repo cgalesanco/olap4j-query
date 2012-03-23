@@ -99,7 +99,7 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 		
 		 
 		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
-		assertMdx("Union({%1$s}, Except(%2$s.AllMembers, {%1$s}))", exp, rootMember, rootLevel);
+		assertMdx("%2$s.AllMembers", exp, rootMember, rootLevel);
 	}
 
 	@Test
@@ -121,7 +121,7 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 		
 		 
 		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
-		assertMdx("Union(%1$s.Children, Descendants(Except(%2$s.AllMembers, {%1$s}), 1))", exp, rootMember, rootLevel);
+		assertMdx("Descendants(%2$s.AllMembers, 1)", exp, rootMember, rootLevel);
 	}
 
 	@Test

@@ -94,12 +94,46 @@ class SelectionTree {
 			sequence = s;
 		}
 		
-		public void applyMember(Sign s) {
+		private void applyMember(Sign s) {
 			getStatus().clear(Operator.MEMBER);
 			if ( getMemberSign() == s )
 				return;
 			
 			getStatus().apply(s, Operator.MEMBER);
+		}
+		
+		private void applyChildren(Sign s) {
+			getStatus().clear(Operator.CHILDREN);
+			if ( getChildrenSign() != s )
+				getStatus().apply(s, Operator.CHILDREN);
+			
+			Iterator<SelectionNode> itChilds = overridingChildren.iterator();
+			while(itChilds.hasNext()) {
+				SelectionNode child = itChilds.next();
+				child.getStatus().clear(Operator.MEMBER);
+				if ( child.isVoid() ) {
+					child.parent = null;
+					itChilds.remove();
+				}
+			}
+		}
+		
+		private void applyDescendants(Sign s) {
+			getStatus().clear(Operator.DESCENDANTS);
+			getStatus().clear(Operator.CHILDREN);
+			getStatus().clear(Operator.MEMBER);
+			
+			if ( getDefaultSign() != s || getMemberSign() != s || getChildrenSign() != s) {
+				getStatus().apply(s, Operator.DESCENDANTS);
+				sequence = currentSequence;
+			}
+			
+			Iterator<SelectionNode> itChilds = overridingChildren.iterator();
+			while(itChilds.hasNext()) {
+				SelectionNode child = itChilds.next();
+				child.parent = null;
+				itChilds.remove();
+			}
 		}
 		
 		public Sign getMemberSign() {
@@ -323,6 +357,33 @@ class SelectionTree {
 			return levels;
 		}
 
+		public void apply(Operator operator, Sign sign) {
+			switch(operator) {
+			case MEMBER:
+				applyMember(sign);
+				break;
+				
+			case CHILDREN:
+				applyChildren(sign);
+				break;
+				
+			case DESCENDANTS:
+				applyDescendants(sign);
+				break;
+			}
+			
+			SelectionNode n = this;
+			while( n != null && n.isVoid() ) {
+				SelectionNode p = n.parent;
+				if ( p != null ) {
+					n.parent = null;
+					p.overridingChildren.remove(n);
+				}
+
+				n = p;
+			}
+		}
+
 	}
 
 	public SelectionNode find(Member member) {
@@ -512,99 +573,19 @@ class SelectionTree {
 		Stack<Member> path = createPathTo(action.getMember());
 		SelectionNode memberInfo = find(path);
   
-		// Compute the parent node, if it's found in the selection tree
-		SelectionNode parent = memberInfo.getParent();
-		if (path.size() > 0)
-			parent = path.size() == 1 ? memberInfo : null;
-
-		// Avoids creating tree nodes when this action is a no-op
-		if (parent != root && path.size() > 0) {
-			switch (action.getOperator()) {
-			case MEMBER:
-				if (parent != null) {
-					Sign parentSign = parent.getStatus().getSelectionSign(
-							Operator.CHILDREN);
-					if (parentSign == action.getSign())
-						return;
-					if (parentSign == null
-							&& memberInfo
-									.getDefaultSign() == action
-									.getSign())
-						return;
-				} else {
-					if (memberInfo.getDefaultSign() == action
-							.getSign()) {
-						return;
-					}
-				}
-				break;
-
-			case CHILDREN:
-				if (memberInfo.getDefaultSign() == action.getSign()) {
-					return;
-				}
-				break;
-
-			case DESCENDANTS:
-				if (parent != null) {
-					Sign parentSign = parent.getStatus().getSelectionSign(
-							Operator.CHILDREN);
-					if (parentSign == null) {
-						if (memberInfo.getDefaultSign() == action.getSign())
-							return;
-					} else {
-						if (parentSign == action.getSign()
-								&& memberInfo
-										.getDefaultSign() == action
-										.getSign())
-							return;
-					}
-				} else {
-					if (memberInfo.getDefaultSign() == action
-							.getSign())
-						return;
-				}
-				break;
-
-			}
-		}
-
 		// Creates necesarry tree nodes including the one corresponding to this
 		// action
 		while (!path.isEmpty()) {
 			Member m = path.pop();
 			memberInfo = memberInfo.createOverridingChild(m);
 		}
-		if (action.getOperator() == Operator.MEMBER
-				&& action.getSign() == memberInfo.getMemberSign())
-			return;
 
 		// TODO detect overriding every children of a member and replace the
 		// inclusion.
 		// e.g.: excluding every children MEMBER is equivalent to exclude
 		// CHILDREN
 
-		MemberSelectionState currentSt = memberInfo.getStatus();
-		currentSt.apply(action.getSign(), action.getOperator());
-
-		if (action.getOperator() == Operator.DESCENDANTS) {
-			memberInfo.setSequence(currentSequence);
-			memberInfo.getOverridingChildren().clear();
-		} else {
-			if (action.getOperator() == Operator.CHILDREN) {
-				Iterator<SelectionNode> itChild = memberInfo
-						.getOverridingChildren().iterator();
-				while (itChild.hasNext()) {
-					SelectionNode child = itChild.next();
-					MemberSelectionState childSt = child.getStatus();
-					childSt.clear(Operator.MEMBER);
-					if (child.isVoid()) {
-						// TODO remove back-reference from removed child
-						itChild.remove();
-					}
-				}
-			}
-		}
+		memberInfo.apply(action.getOperator(), action.getSign());
 	}
 
 	public boolean isLeaf(Member member) throws OlapException {
