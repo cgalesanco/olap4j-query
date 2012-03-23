@@ -13,6 +13,7 @@ import org.olap4j.metadata.Member;
 
 import es.cgalesanco.olap4j.query.Selection.Operator;
 import es.cgalesanco.olap4j.query.Selection.Sign;
+import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 
 class SelectionListBuilder {
 	private static class LevelAction {
@@ -70,7 +71,7 @@ class SelectionListBuilder {
 			}});
 	}
 	
-	public void addSelections(SelectionTree node) {
+	public void addSelections(SelectionNode node) {
 		MemberSelectionState state = node.getStatus();
 		Level thisLevel = node.getMember().getLevel();
 		Level previousLevel = null;
