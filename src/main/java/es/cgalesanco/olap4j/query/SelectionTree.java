@@ -2,6 +2,7 @@ package es.cgalesanco.olap4j.query;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.Iterator;
@@ -26,6 +27,7 @@ class SelectionTree {
 	private List<Level> levels;
 	private NavigableMap<Level, SelectionInfo> levelSelections;
 	private int currentSequence;
+	private static LevelComparator levelComparator = new LevelComparator();
 	
 	private static class LevelComparator implements Comparator<Level> {
 
@@ -141,6 +143,7 @@ class SelectionTree {
 				return s;
 			
 			SelectionInfo levelInfo = levelSelections.get(getMemberLevel());
+			SelectionInfo descInfo = getDefaultSelection();
 			Sign descendantsSign = selections.get(Operator.DESCENDANTS);
 			if ( descendantsSign != null ) {
 				if ( levelInfo == null || levelInfo.getSequence() <= getSequence())
@@ -151,11 +154,11 @@ class SelectionTree {
 				return s;
 			}
 			
-			if ( levelInfo != null && levelInfo.getSequence() > getDefaultSequence() ) {
+			if ( levelInfo != null && levelInfo.getSequence() > descInfo.getSequence() ) {
 				return levelInfo.getSign();
 			}
 			
-			return getDefaultSign();
+			return descInfo.getSign();
 		}
 		
 		private Level getMemberLevel() {
@@ -171,16 +174,17 @@ class SelectionTree {
 			
 			SelectionInfo levelInfo = levelSelections.get(getChildrenLevel());
 			Sign descendantsSign = selections.get(Operator.DESCENDANTS);
+			SelectionInfo defInfo = getDefaultSelection();
 			if ( descendantsSign != null ) {
 				if ( levelInfo == null || levelInfo.getSequence() <= getSequence())
 					return descendantsSign;
 			}
 
-			if ( levelInfo != null && levelInfo.getSequence() > getDefaultSequence() ) {
+			if ( levelInfo != null && levelInfo.getSequence() > defInfo.getSequence() ) {
 				return levelInfo.getSign();
 			}
 			
-			return getDefaultSign();
+			return defInfo.getSign();
 		}
 
 		private Level getChildrenLevel() {
@@ -190,17 +194,6 @@ class SelectionTree {
 			if ( pos < levels.size() )
 				return levels.get(pos);
 			return null;
-		}
-
-		private int getDefaultSequence() {
-			SelectionNode n = this;
-			while( n != null ) {
-				if ( n.selections.get(Operator.DESCENDANTS) != null )
-					return n.getSequence();
-				
-				n = n.getParent();
-			}
-			return 0;
 		}
 
 		/**
@@ -298,13 +291,7 @@ class SelectionTree {
 		}
 
 		public Sign getDefaultSign() {
-			SelectionNode prev = this;
-			Sign s = null;
-			while (prev != null
-					&& (s = prev.selections.get(Operator.DESCENDANTS)) == null) {
-				prev = prev.parent;
-			}
-			return s;
+			return getDefaultSelection().getSign();
 		}
 
 		public SelectionNode getParent() {
@@ -375,6 +362,50 @@ class SelectionTree {
 
 		public Sign getSelectionSign(Operator op) {
 			return selections.get(op);
+		}
+
+		public boolean isMemberLevelIncluded() {
+			SelectionInfo info = levelSelections.get(getMemberLevel());
+			return info != null && info.getSign() == Sign.INCLUDE;
+		}
+
+		public boolean isChildrenLevelIncluded() {
+			SelectionInfo info = levelSelections.get(getChildrenLevel());
+			return info != null && info.getSign() == Sign.INCLUDE;
+		}
+
+		public List<Level> getOverridingLevels(Sign sign) {
+			ArrayList<Level> included = new ArrayList<Level>();
+			int memberDepth = member == null ? -1 : member.getDepth();
+			int generation = getDefaultSelection().getSequence();
+			for(Entry<Level,SelectionInfo> eLevel : levelSelections.entrySet()) {
+				Level l = eLevel.getKey();
+				SelectionInfo levelInfo = eLevel.getValue();
+				if ( levelInfo.getSign() == sign )
+					continue;
+					
+				if ( l.getDepth() > memberDepth+1 && levelInfo.getSequence() > generation )
+					included.add(l);
+			}
+			
+			Collections.sort(included, levelComparator);
+			return included;
+		}
+
+		public boolean isMemberAlreadyIncluded() {
+			if ( parent == null )
+				return false;
+			return parent.getChildrenSign() == Sign.INCLUDE;
+		}
+
+		public SelectionInfo getDefaultSelection() {
+			SelectionNode prev = this;
+			Sign s = null;
+			while (prev != null
+					&& (s = prev.selections.get(Operator.DESCENDANTS)) == null) {
+				prev = prev.parent;
+			}
+			return new SelectionInfo(s, prev.sequence);
 		}
 
 	}
@@ -536,12 +567,12 @@ class SelectionTree {
 
 	private void applyLevelAction(SelectionNode selection, int depth, Sign s) {
 		if (depth == 0) {
-			selection.selections.get(Operator.MEMBER);
+			selection.selections.remove(Operator.MEMBER);
 			return;
 		}
 
 		if (depth == 1) {
-			selection.selections.get(Operator.CHILDREN);
+			selection.selections.remove(Operator.CHILDREN);
 		}
 
 		for (SelectionNode child : selection.getOverridingChildren()) {

@@ -61,7 +61,7 @@ public class UnionBuilder {
 
 	public ParseTreeNode getUnionNode() {
 		ParseTreeNode memberSet = null;
-		if (members != null) {
+		if (members != null && !members.isEmpty()) {
 			List<ParseTreeNode> args = new ArrayList<ParseTreeNode>();
 			args.addAll(members);
 			memberSet = new CallNode(null, "{}", Syntax.Braces, args);

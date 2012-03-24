@@ -719,8 +719,18 @@ public class RegressionIT {
 		CellSet cs = query.execute();
 		CellSetAxis cellSetAxis = cs.getAxes().get(Axis.ROWS.axisOrdinal());
 		int rowsMemberCount = cellSetAxis.getPositionCount();
-		
-		assertEquals(expectedPositions.length, rowsMemberCount);
+	
+		if (expectedPositions.length != rowsMemberCount) {
+			for(int i = 0; i < rowsMemberCount; ++i) {
+				Position pos= cellSetAxis.getPositions().get(i);
+				for(Member m : pos.getMembers()) {
+					System.out.print(m);
+					System.out.print(", ");
+				}
+				System.out.println();
+			}
+			assertEquals(expectedPositions.length, rowsMemberCount);
+		}
 
 		int i = 0;
 		for(Position pos : cellSetAxis.getPositions()) {

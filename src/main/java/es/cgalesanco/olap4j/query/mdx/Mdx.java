@@ -80,6 +80,13 @@ public class Mdx {
 					LiteralNode.createSymbol(null, flag));
 	}
 
+	public static ParseTreeNode descendants(ParseTreeNode from, Level l) {
+		if ( from == null )
+			return null;
+		
+		return new CallNode(null, "Descendants",Syntax.Function, from, new LevelNode(null, l));
+	}
+
 	public static ParseTreeNode order(ParseTreeNode axisExpression,
 			List<Member> sortPosition, SortOrder sortOrder) {
 		MemberNode[] members = new MemberNode[sortPosition.size()];
@@ -105,5 +112,9 @@ public class Mdx {
 
 	public static ParseTreeNode allMembers(Level level) {
 		return new CallNode(null, "AllMembers", Syntax.Property, new LevelNode(null, level));
+	}
+
+	public static ParseTreeNode members(Level level) {
+		return new CallNode(null, "Members", Syntax.Property, new LevelNode(null, level));
 	}
 }

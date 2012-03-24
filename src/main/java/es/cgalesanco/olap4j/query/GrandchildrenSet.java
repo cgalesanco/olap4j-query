@@ -1,6 +1,6 @@
 package es.cgalesanco.olap4j.query;
 
-import java.util.List;
+import java.util.Collection;
 
 import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.metadata.Level;
@@ -12,10 +12,10 @@ import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
 class GrandchildrenSet implements MemberSet {
 	private Member parent;
-	private List<Member> excludedChildren;
+	private Collection<Member> excludedChildren;
 	private Level level;
 
-	public GrandchildrenSet(Member parent, List<Member> overridedChildren) {
+	public GrandchildrenSet(Member parent, Collection<Member> overridedChildren) {
 		this.parent = parent;
 		this.excludedChildren = overridedChildren;
 		NamedList<Level> levels = parent.getHierarchy().getLevels();
@@ -46,9 +46,12 @@ class GrandchildrenSet implements MemberSet {
 
 	@Override
 	public ParseTreeNode getMdx() {
-		return Mdx.descendants(
-				Mdx.except(Mdx.children(parent),
-						UnionBuilder.fromMembers(excludedChildren)), 1);
+		if ( excludedChildren.isEmpty() )
+			return Mdx.descendants(Mdx.member(parent), 2);
+		else
+			return Mdx.descendants(
+					Mdx.except(Mdx.children(parent),
+							UnionBuilder.fromMembers(excludedChildren)), 1);
 	}
 
 	@Override
@@ -64,6 +67,15 @@ class GrandchildrenSet implements MemberSet {
 	@Override
 	public Level getLevel() {
 		return level;
+	}
+
+	public ParseTreeNode getMdxDescendants() {
+		if ( excludedChildren.isEmpty() )
+			return Mdx.descendants(Mdx.member(parent), 2, "SELF_AND_AFTER");
+		else 
+			return Mdx.descendants(
+					Mdx.except(Mdx.children(parent),
+							UnionBuilder.fromMembers(excludedChildren)), 1, "SELF_AND_AFTER");
 	}
 
 }
