@@ -413,11 +413,11 @@ public class ExpandedQueryHierarchyMethodicTest {
 		int i = 0;
 		for (State st1 : State.values()) {
 			for (State st2 : State.values()) {
+				System.out.println(st1 + "/" + st2);
 				qh.clear();
 				st1.apply(rootMember);
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
-					System.out.println(st1 + "/" + st2);
 					expander.setDrills(Arrays.asList(childMember));
 					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander),
 							rootMember, childMember);

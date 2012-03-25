@@ -12,7 +12,6 @@ import org.olap4j.metadata.Member;
 import es.cgalesanco.olap4j.query.Selection.Sign;
 import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 import es.cgalesanco.olap4j.query.mdx.Mdx;
-import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
 class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 	
@@ -36,14 +35,18 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 		
 		processMember(node, memberAction);
 		
-		GrandchildrenSet nonOverridedDescendants = processChildren(node, childrenAction);
+		Set<Member> undrilledChildren = processChildren(node, childrenAction);
 		
 		if ( descendantsSelection.getSign() == Sign.INCLUDE ) {
-			expandDescendants(node, descendantsSelection,
+			undrilledChildren.addAll(node.getOverridedMembers()); 
+			GrandchildrenSet nonOverridedDescendants = new GrandchildrenSet(node.getMember(), undrilledChildren);
+			expression.include(nonOverridedDescendants.getMdxDescendants());
+			removeUndrills(node, descendantsSelection,
 					nonOverridedDescendants);
 		} else {
+			GrandchildrenSet nonOverridedDescendants = new GrandchildrenSet(node.getMember(), node.getOverridedMembers());
 			expandIncludedLevels(node, descendantsSelection,
-					nonOverridedDescendants);
+					nonOverridedDescendants, undrilledChildren);
 		}
 		
 		return true;
@@ -75,19 +78,10 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 
 	private void expandIncludedLevels(SelectionNode node,
 			SelectionInfo descendantsSelection,
-			MemberSet nonOverridedDescendants) {
-		CollectionMemberSet undrilled = new CollectionMemberSet();
-		UnionBuilder undrilledUnion = new UnionBuilder();
-		undrilledUnion.add(nonOverridedDescendants.getMdx());
+			MemberSet nonOverridedDescendants, Set<Member> undrilledChildren) {
+		CollectionMemberSet undrilled = new CollectionMemberSet(undrilledChildren.toArray(new Member[undrilledChildren.size()]));
 		for(Level included : node.getOverridingLevels(Sign.EXCLUDE)) {
-			int nodeLevel = node.getMember().getLevel().getDepth();
-			int levelDistance = included.getDepth() - (nodeLevel+2);
-			
-			if ( levelDistance == 0 ) {
-				expression.exclude(undrilledUnion.getUnionNode());
-			} else {
-				expression.exclude(Mdx.descendants(undrilledUnion.getUnionNode(), included));
-			}
+			expression.exclude(Mdx.descendants(undrilled.getMdx(), included));
 			
 			Iterator<Member> itUndrill = undrillList.iterator();
 			while(itUndrill.hasNext()) {
@@ -98,56 +92,42 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 				
 				if ( nonOverridedDescendants.containsAncestorOf(undrill) && !undrilled.containsAncestorOf(undrill) ) {
 					undrilled.add(undrill);
-					undrilledUnion.add(Mdx.member(undrill));
 					itUndrill.remove();
 				}
 			}
 		}
 	}
 
-	private void expandDescendants(SelectionNode node,
+	private void removeUndrills(SelectionNode node,
 			SelectionInfo descendantsSelection,
 			GrandchildrenSet nonOverridedDescendants) {
-		AxisExpression descendantsExpression = new AxisExpression();
-		
-		// Include non overrided descendants
-		descendantsExpression.include(nonOverridedDescendants.getMdxDescendants());
+		CollectionMemberSet descendantsUndrills = new CollectionMemberSet();
 
-		// Process grandchildren undrills
+		List<Level> excludedLevels = node.getOverridingLevels(Sign.INCLUDE);
+		
+		// Remove undrilled descendants
 		Iterator<Member> itUndrill = undrillList.iterator();
 		while(itUndrill.hasNext()) {
 			Member undrill = itUndrill.next();
-			if ( nonOverridedDescendants.contains(undrill) ) {
-				expression.undrill(Mdx.member(undrill));
+			
+			if ( excludedLevels.contains(undrill.getLevel()) )
+				continue;
+			
+			if ( nonOverridedDescendants.containsAncestorOf(undrill) && !descendantsUndrills.containsAncestorOf(undrill))  {
+				descendantsUndrills.add(undrill);
 				itUndrill.remove();
 			}
 		}
+		expression.undrill(descendantsUndrills.getMdx());
 		
-		// Remove descendants from excluded leveles
-		CollectionMemberSet descendantsUndrills = new CollectionMemberSet();
-		for(Level excluded : node.getOverridingLevels(Sign.EXCLUDE)) {
-			int levelDistance = excluded.getDepth()-node.getMember().getDepth()+2;
-			descendantsExpression.exclude(Mdx.descendants(nonOverridedDescendants.getMdx(), levelDistance));
-
-			// Remove undrilled descendants
-			itUndrill = undrillList.iterator();
-			while(itUndrill.hasNext()) {
-				Member undrill = itUndrill.next();
-				if ( !excluded.equals(undrill.getLevel()))
-					continue;
-				
-				if ( nonOverridedDescendants.containsAncestorOf(undrill) && !descendantsUndrills.containsAncestorOf(undrill) ) {
-					descendantsUndrills.add(undrill);
-					itUndrill.remove();
-				}
-			}
+		// Remove excluded leveles
+		for(Level l : excludedLevels) {
+			expression.exclude(Mdx.descendants(nonOverridedDescendants.getMdx(), l));
 		}
 		
-		descendantsExpression.undrill(descendantsUndrills.getMdx());
-		expression.include(descendantsExpression.getExpression());
 	}
 
-	private GrandchildrenSet processChildren(SelectionNode node, Sign childrenAction) {
+	private Set<Member> processChildren(SelectionNode node, Sign childrenAction) {
 		if ( childrenAction == Sign.INCLUDE ) {
 			if ( node.getMemberSign() == Sign.INCLUDE )
 				expression.drill(Mdx.member(node.getMember()));
@@ -160,20 +140,21 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 				expression.exclude(Mdx.children(node.getMember()));
 		}
 		
-		Set<Member> excludedChildren = new HashSet<Member>(node.getOverridedMembers());
+		Set<Member> undrilledChildren = new HashSet<Member>();
+		List<Member> overrided = node.getOverridedMembers();
 		if ( node.getChildrenSign() == Sign.INCLUDE ) {
 			Iterator<Member> itUndrill = undrillList.iterator();
 			while(itUndrill.hasNext()) {
 				Member undrill = itUndrill.next();
 				if ( node.getMember().equals(undrill.getParentMember()) && 
-						!excludedChildren.contains(undrill) ) {
-					excludedChildren.add(undrill);
+						!overrided.contains(undrill)) {
+					undrilledChildren.add(undrill);
 					itUndrill.remove();
 				}
 			}
 		}
 		
-		return new GrandchildrenSet(node.getMember(), excludedChildren);
+		return undrilledChildren;
 	}
 
 	private boolean processCommonCases(Sign memberAction, Sign childrenAction,
@@ -199,18 +180,8 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 			else if (memberAction == Sign.EXCLUDE )
 				expression.exclude(node.getMember());
 			
-			
-			// Process grandchildren undrills
-			GrandchildrenSet grandchildren = new GrandchildrenSet(node.getMember(), node.getOverridedMembers());
-			Iterator<Member> itUndrill = undrillList.iterator();
-			while(itUndrill.hasNext()) {
-				Member undrill = itUndrill.next();
-				if ( grandchildren.contains(undrill) ) {
-					expression.undrill(Mdx.member(undrill));
-					itUndrill.remove();
-				}
-			}
-			
+	
+			removeUndrills(node, descendantsSelection, new GrandchildrenSet(node.getMember(), node.getOverridedMembers()));
 			return true;
 		} 
 		
@@ -225,16 +196,7 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 				expression.exclude(node.getMember());
 			
 			// Process grandchildren undrills
-			GrandchildrenSet grandchildren = new GrandchildrenSet(node.getMember(), node.getOverridedMembers());
-			Iterator<Member> itUndrill = undrillList.iterator();
-			while(itUndrill.hasNext()) {
-				Member undrill = itUndrill.next();
-				if ( grandchildren.contains(undrill) ) {
-					expression.undrill(Mdx.member(undrill));
-					itUndrill.remove();
-				}
-			}
-			
+			removeUndrills(node, descendantsSelection, new GrandchildrenSet(node.getMember(), node.getOverridedMembers()));
 			return true;
 		}
 		return false;
@@ -263,25 +225,23 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 
 	private void expandRoot(SelectionNode node) {
 		RootChildren nonOverridedRoots = new RootChildren(levels.get(0), node.getOverridedMembers());
-		Set<Member> undrilled = new HashSet<Member>();
+		CollectionMemberSet undrilledSet = new CollectionMemberSet();
 		if ( node.getChildrenSign() == Sign.INCLUDE ) {
 			Iterator<Member> itUndrill = undrillList.iterator();
 			while(itUndrill.hasNext()) {
 				Member undrill = itUndrill.next();
 				if ( nonOverridedRoots.contains(undrill) ) {
-					undrilled.add(undrill);
+					undrilledSet.add(undrill);
 					itUndrill.remove();
 				}
 			}
 		}
 		
-		UnionBuilder undrillsUnion = new UnionBuilder();
-		undrillsUnion.add(undrilled);
 		for(Level l : node.getIncludedLevels()) {
 			if ( l.getDepth() == 0 )
 				continue;
 			
-			expression.exclude(Mdx.descendants(undrillsUnion.getUnionNode(), l));
+			expression.exclude(Mdx.descendants(undrilledSet.getMdx(), l));
 			
 			Iterator<Member> itUndrill = undrillList.iterator();
 			while(itUndrill.hasNext()) {
@@ -289,10 +249,8 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 				if ( !undrill.getLevel().equals(l) )
 					continue;
 
-				if ( nonOverridedRoots.containsAncestorOf(undrill) ) {
-					// TODO avoid undrilling descendants of a previously undrilled member
-					undrilled.add(undrill);
-					undrillsUnion.add(Mdx.member(undrill));
+				if ( nonOverridedRoots.containsAncestorOf(undrill) && !undrilledSet.containsAncestorOf(undrill)) {
+					undrilledSet.add(undrill);
 					itUndrill.remove();
 				}
 			}

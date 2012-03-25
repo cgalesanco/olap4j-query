@@ -712,6 +712,46 @@ public class RegressionIT {
 				"  [Time].[1998].[Q4].[12]"
 			);
 				
+		// Reincludes [Time].[Year] level and adds some undrills
+		testHierarchies[0].include(year);
+		Member y1998 = testHierarchies[0].getHierarchy().getRootMembers().get("1998");
+		testAxis.undrill(y1998);
+		testAxis.undrill(y1997.getChildMembers().get("Q1"));
+		assertRowsMembers(
+				"-[Time].[1997]",
+				"  +[Time].[1997].[Q1]",
+				"  -[Time].[1997].[Q2]",
+				"    [Time].[1997].[Q2].[4]",
+				"    [Time].[1997].[Q2].[5]",
+				"    [Time].[1997].[Q2].[6]",
+				"  -[Time].[1997].[Q3]",
+				"    [Time].[1997].[Q3].[7]",
+				"    [Time].[1997].[Q3].[8]",
+				"    [Time].[1997].[Q3].[9]",
+				"  -[Time].[1997].[Q4]",
+				"    [Time].[1997].[Q4].[10]",
+				"    [Time].[1997].[Q4].[11]",
+				"    [Time].[1997].[Q4].[12]",
+				"+[Time].[1998]"
+			);
+
+		// Removes children of [Time].[1997].[Q3]
+		testHierarchies[0].include(year);
+		testHierarchies[0].exclude(Operator.CHILDREN, y1997.getChildMembers().get("Q3"));
+		assertRowsMembers(
+				"-[Time].[1997]",
+				"  +[Time].[1997].[Q1]",
+				"  -[Time].[1997].[Q2]",
+				"    [Time].[1997].[Q2].[4]",
+				"    [Time].[1997].[Q2].[5]",
+				"    [Time].[1997].[Q2].[6]",
+				"   [Time].[1997].[Q3]",
+				"  -[Time].[1997].[Q4]",
+				"    [Time].[1997].[Q4].[10]",
+				"    [Time].[1997].[Q4].[11]",
+				"    [Time].[1997].[Q4].[12]",
+				"+[Time].[1998]"
+			);
 	}
 	
 	

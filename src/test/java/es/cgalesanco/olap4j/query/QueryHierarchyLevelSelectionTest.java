@@ -20,6 +20,7 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 	private static Level rootLevel;
 	private static Level childLevel;
 	private static Level grandsonLevel;
+	private static Member rootMember2;
 	private QueryHierarchy testHierarchy;
 	private HierarchyExpander expander;
 	
@@ -32,6 +33,7 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 		childLevel = baseHierarchy.getLevels().get(1);
 		grandsonLevel = baseHierarchy.getLevels().get(2);
 		rootMember = baseHierarchy.getRootMembers().get(0);
+		rootMember2 = baseHierarchy.getRootMembers().get(1);
 		childMember = rootMember.getChildMembers().get("Q2");
 	}
 
@@ -146,6 +148,30 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 	}
 	
 	@Test
+	public void testOneLevelSelection_includeChildLevel_includedRootDescendatsBefore_nodDrill_epanded() throws Exception {
+		expander.expandHierarchy();
+		testHierarchy.include(Operator.DESCENDANTS, rootMember);
+		testHierarchy.include(childLevel);
+				
+		 
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
+		assertMdx("Union({%1$s}, Union(%2$s.AllMembers, Descendants(%1$s, 2, SELF_AND_AFTER)))", exp, rootMember, childLevel);
+		
+	}
+	
+	@Test
+	public void testOneLevelSelection_includeGrandsonLevel_includedRootDescendatsBefore_nodDrill_epanded() throws Exception {
+		expander.expandHierarchy();
+		testHierarchy.include(Operator.DESCENDANTS, rootMember);
+		testHierarchy.include(grandsonLevel);
+				
+		 
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
+		
+		assertMdx("Union(%2$s.AllMembers, Descendants(%1$s, 0, SELF_AND_AFTER))", exp, rootMember, grandsonLevel, rootLevel);
+	}
+	
+	@Test
 	public void testTwoConsecutiveLevelSelection_rootDrill() throws Exception {
 		HierarchyExpander expander = new HierarchyExpander();
 		testHierarchy.include(rootLevel);
@@ -155,9 +181,19 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		assertMdx("DrilldownMember(%1$s.AllMembers, {%2$s}, RECURSIVE)", exp, rootLevel, rootMember);
 	}
-
+	
 	@Test
 	public void testTwoNonConsecutiveLevelSelection_rootDrill() throws Exception {
+		testHierarchy.include(rootLevel);
+		testHierarchy.include(grandsonLevel);
+				
+		expander.setDrills(Arrays.asList(rootMember));
+		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
+		assertMdx("Union(%1$s.AllMembers, Descendants({%2$s}, 2))", exp, rootLevel, rootMember);
+	}
+
+	@Test
+	public void testAba_rootDrill() throws Exception {
 		testHierarchy.include(rootLevel);
 		testHierarchy.include(grandsonLevel);
 				
