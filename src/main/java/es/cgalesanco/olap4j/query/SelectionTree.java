@@ -321,6 +321,7 @@ class SelectionTree {
 				if (eLevel.getValue().getSign() == Sign.INCLUDE && eLevel.getValue().getSequence() >= sequence)
 					levels.add(eLevel.getKey());
 			}
+			Collections.sort(levels, levelComparator);
 			return levels;
 		}
 		

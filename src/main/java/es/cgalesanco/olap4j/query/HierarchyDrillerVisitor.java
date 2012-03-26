@@ -71,7 +71,14 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 			}
 		} else {
 			List<Level> includedLevels = node.getOverridingLevels(Sign.EXCLUDE);
+			int lastLevelDepth = node.getChildrenSign() == Sign.INCLUDE ? node.getMember().getLevel().getDepth()+1 : 0;
 			for(Level l : includedLevels) {
+				if ( l.getDepth() - lastLevelDepth == 1 ) {
+					expression.drill(drillRoots.getMdx());
+				} else {
+					expression.include(Mdx.descendants(drillRoots.getMdx(), includedLevels.get(0)));
+				}
+				
 				CollectionMemberSet nextRoots = new CollectionMemberSet();
 				Iterator<Member> itDrill = drillList.iterator();
 				while(itDrill.hasNext()) {
@@ -82,6 +89,7 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 					}
 				}
 				
+				lastLevelDepth = l.getDepth();
 				drillRoots = nextRoots;
 			}
 		}

@@ -26,9 +26,9 @@ class CollectionMemberSet implements MemberSet {
 	@Override
 	public boolean containsAncestorOf(Member m) {
 		for(Member member : members) {
-			Member p = member;
+			Member p = m;
 			while( p != null ) {
-				if ( p.equals(m) )
+				if ( p.equals(member) )
 					return true;
 				
 				p = p.getParentMember();
