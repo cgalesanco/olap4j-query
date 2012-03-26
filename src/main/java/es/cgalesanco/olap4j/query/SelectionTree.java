@@ -33,6 +33,10 @@ class SelectionTree {
 
 		@Override
 		public int compare(Level o1, Level o2) {
+			if ( o1 == null )
+				return -1;
+			if ( o2 == null )
+				return 1;
 			return o1.getDepth() - o2.getDepth();
 		}
 
@@ -662,6 +666,10 @@ class SelectionTree {
 
 		while (!pendingNodes.isEmpty()) {
 			SelectionNode node = pendingNodes.pop();
+			
+			// If there is and included level deeper than this node, return true 
+			if ( !node.getOverridingLevels(Sign.EXCLUDE).isEmpty() )
+				return true;
 
 			Sign childrenDefaultSign = node.getChildrenSign();
 
@@ -731,6 +739,13 @@ class SelectionTree {
 		}
 		// None of the processed nodes had any children, so return false.
 		return false;
+	}
+
+	public boolean isIncluded(Level l) {
+		SelectionInfo info = levelSelections.get(l);
+		if ( info == null )
+			return false;
+		return info.getSign() == Sign.INCLUDE;
 	}
 
 	

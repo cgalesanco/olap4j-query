@@ -437,4 +437,8 @@ public class QueryHierarchy {
 		return selectionTree.listSelections();
 	}
 
+	public boolean isIncluded(Level l) {
+		return selectionTree.isIncluded(l);
+	}
+
 }

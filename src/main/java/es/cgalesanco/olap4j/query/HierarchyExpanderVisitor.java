@@ -237,7 +237,7 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 			}
 		}
 		
-		for(Level l : node.getIncludedLevels()) {
+		for(Level l : node.getOverridingLevels(Sign.EXCLUDE)) {
 			if ( l.getDepth() == 0 )
 				continue;
 			

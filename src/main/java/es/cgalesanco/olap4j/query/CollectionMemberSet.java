@@ -1,9 +1,9 @@
 package es.cgalesanco.olap4j.query;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.metadata.Level;
@@ -56,7 +56,7 @@ class CollectionMemberSet implements MemberSet {
 		return level;
 	}
 
-	public void addAll(Set<Member> set) {
+	public void addAll(Collection<Member> set) {
 		members.addAll(set);
 	}
 }

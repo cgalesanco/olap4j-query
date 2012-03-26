@@ -22,7 +22,7 @@ class RootChildren implements MemberSet {
 	public boolean containsAncestorOf(Member m) {
 		Member parent = m;
 		while( parent.getParentMember() != null ) {
-			parent = m.getParentMember();
+			parent = parent.getParentMember();
 		}
 		return !excludedRoots.contains(parent);
 	}
