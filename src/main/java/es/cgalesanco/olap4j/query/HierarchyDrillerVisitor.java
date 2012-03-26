@@ -1,6 +1,5 @@
 package es.cgalesanco.olap4j.query;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -13,307 +12,241 @@ import org.olap4j.metadata.Member;
 import es.cgalesanco.olap4j.query.Selection.Sign;
 import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 import es.cgalesanco.olap4j.query.mdx.Mdx;
-import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
 class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
+	private Set<Member> drillList;
 	private AxisExpression expression;
-	private List<Member> drillList;
 	private List<Level> levels;
-
-	@Override
-	public boolean visitEnter(SelectionNode current) {
-		if ( current.getMember() == null )
+	private Level firstIncludedLevel;
+	
+	public boolean expand(SelectionNode node) {
+		Sign memberAction = getMemberAction(node);
+		if ( isCollapsed(node) ) {
+			processMember(node, memberAction);
+			return false;
+		} else {
+			if ( node.getMemberSign() == Sign.INCLUDE )
+				drillList.remove(node.getMember());
+		}
+		
+		Sign childrenAction = getChildrenAction(node);
+		SelectionInfo descendantsSelection = node.getDefaultSelection();
+		
+		if ( processCommonCases(memberAction, childrenAction, descendantsSelection, node) )
 			return true;
 		
-		Member currentMember = current.getMember();
-		Sign currentSign = current.getMemberSign();
-
-		boolean alreadyIncluded = false;
-		if ( current.getParent().getMember() != null ) {
-			alreadyIncluded = current.getParent().getChildrenSign() == Sign.INCLUDE;
-		}
+		processMember(node, memberAction);
 		
-		// If this member is included, and is not drilled (nor expanded),
-		// include it in the axis and ends the visit.
-		if (currentSign == Sign.INCLUDE) {
-			if (!drillList.remove(currentMember)) {
-				if (!alreadyIncluded)
-					expression.include(Mdx.member(currentMember));
-				return false;
+		MemberSet drillRoots = processChildren(node, childrenAction);
+		
+		if ( descendantsSelection.getSign() == Sign.INCLUDE ) {
+			List<Level> excludedLevels = node.getOverridingLevels(Sign.INCLUDE);
+			boolean lastLevelIncluded = node.getChildrenSign() == Sign.INCLUDE;
+			for(int iLevel = node.getMember().getDepth()+2; iLevel < levels.size(); ++iLevel) {
+				Level l = levels.get(iLevel);
+				
+				if ( excludedLevels.contains(l) ) {
+					lastLevelIncluded = false;
+					continue;
+				} 
+					
+			
+				if ( lastLevelIncluded )
+					expression.drill(drillRoots.getMdx());
+				else
+					expression.include(Mdx.descendants(drillRoots.getMdx(), l.getDepth() - drillRoots.getLevel().getDepth()));
+				lastLevelIncluded = true;
+				
+				CollectionMemberSet nextRoots = new CollectionMemberSet();
+				Iterator<Member> itDrill = drillList.iterator();
+				while(itDrill.hasNext()) {
+					Member drill = itDrill.next();
+					if ( drill.getLevel().equals(l) && drillRoots.containsAncestorOf(drill) ) {
+						nextRoots.add(drill);
+						itDrill.remove();
+					}
+				}
+				
+				drillRoots = nextRoots;
+			}
+		} else {
+			List<Level> includedLevels = node.getOverridingLevels(Sign.EXCLUDE);
+			for(Level l : includedLevels) {
+				CollectionMemberSet nextRoots = new CollectionMemberSet();
+				Iterator<Member> itDrill = drillList.iterator();
+				while(itDrill.hasNext()) {
+					Member drill = itDrill.next();
+					if ( drill.getLevel().equals(l) && drillRoots.containsAncestorOf(drill) ) {
+						nextRoots.add(drill);
+						itDrill.remove();
+					}
+				}
+				
+				drillRoots = nextRoots;
 			}
 		}
-
-		// Include or exclude current member if necessary
-		if (currentSign == Sign.INCLUDE) {
-			if (!alreadyIncluded)
-				expression.include(Mdx.member(currentMember));
-		} else {
-			if (alreadyIncluded)
-				expression.exclude(Mdx.member(currentMember));
-		}
+		
 		return true;
 	}
 
-	@Override
-	public void visitLeave(SelectionNode current) {
-		if ( current.getMember() == null ) {
-			drillLevels(current);
+	private void expandRoot(SelectionNode node) {
+		List<Level> includedLevels = node.getIncludedLevels();
+		if ( includedLevels.size() < 2 )
 			return;
-		}
-		
-		Member currentMember = current.getMember();
-		Sign currentSign = current.getMemberSign();
-		Sign childrenSign = current.getChildrenSign();
-		Sign descendantsSign = current.getDefaultSign();
-		
-		List<Member> overridedMembers = current.getOverridedMembers();
+		MemberSet drillRoots = new RootChildren(levels.get(0), node.getOverridedMembers());
 
-		// If descendants are included, expand non-overriding nodes in the
-		// inclusion/exclusion tree.
-		if (descendantsSign == Sign.INCLUDE) {
-			// Childrens are excluded, so we have to add grandchildren to the
-			// axis expression
-			if (childrenSign == Sign.EXCLUDE) {
-				GrandchildrenSet expansionRoots = new GrandchildrenSet(
-						currentMember, overridedMembers);
-				if (overridedMembers.isEmpty()) {
-						expression.include(Mdx.descendants(
-								Mdx.member(currentMember), 2));
-				} else {
-					expression.include(expansionRoots.getMdx());
-				}
-				expandDrills(expansionRoots, current.getExcludedLevels());
-			} else {
-				ChildrenMemberSet expansionRoots = new ChildrenMemberSet(
-				currentMember, overridedMembers);
-				if (currentSign == Sign.INCLUDE) {
-					expression.drill(Mdx.member(currentMember));
-				} else {
-					expression.include(Mdx.children(currentMember));
-				}
-				expandDrills(expansionRoots, 
-						current.getExcludedLevels());
-			}
-		} else {
-			if (childrenSign == Sign.INCLUDE) {
-				// Include children members
-				if (currentSign == Sign.INCLUDE) {
-					expression.drill(Mdx.member(currentMember));
-				} else {
-					expression.include(Mdx.children(currentMember));
-				}
-				
-				List<Level> includedLevels = current.getIncludedLevels();
-				Level fromLevel = currentMember.getLevel();
-				if ( fromLevel.getDepth()+2 < levels.size() ) {
-					expandLevelDrills(
-							new GrandchildrenSet(currentMember, overridedMembers),
-							includedLevels); 
-				}
-			} else {
-				Level fromLevel = currentMember.getLevel();
-				int iLevel = fromLevel.getDepth()+2;
-				List<Level> actuallyIncludedLevels = current.getIncludedLevels();
-				while( iLevel < levels.size() ) {
-					fromLevel = levels.get(iLevel);
-					if ( actuallyIncludedLevels.contains(fromLevel) )
-						break;
-					
-					++iLevel;
-				}
-				
-				if ( iLevel > levels.size() )
-					return;
-				
-				expandLevelDrills(new DescendantsSet(currentMember, fromLevel), actuallyIncludedLevels);
-			}
-		}
-
-
-	}
-
-	private void drillLevels(SelectionNode root) {
-		Iterator<Level> itLevels = root.getIncludedLevels().iterator();
-		if (!itLevels.hasNext())
-			return;
-
-		// Include members from first expanded level
-		Level firstLevel = itLevels.next();
-		MemberSet rootMemberSet = new LevelMemberSet(firstLevel,
-				root.getOverridedMembers());
-		if (firstLevel.getDepth() == 0) {
-			expression.include(Mdx.descendants(rootMemberSet.getMdx(),
-					firstLevel.getDepth()));
-		}
-
-		MemberSet previousUndrills = rootMemberSet;
-		while (itLevels.hasNext()) {
-			// Computes the list of drilled members in this level
-			Level nextLevel = itLevels.next();
-			List<Member> drilledRoots = new ArrayList<Member>();
+		Level currentLevel = includedLevels.get(0);
+		for(int iLevel = 1; iLevel < includedLevels.size(); ++iLevel) {
+			Level nextLevel = includedLevels.get(iLevel);
+			
 			Iterator<Member> itDrills = drillList.iterator();
-			while (itDrills.hasNext()) {
+			CollectionMemberSet drills = new CollectionMemberSet();
+			while( itDrills.hasNext() ) {
 				Member drill = itDrills.next();
-				if (drill.getLevel().equals(firstLevel)) {
-					if (previousUndrills.containsAncestorOf(drill)) {
-						itDrills.remove();
-						drilledRoots.add(drill);
-					}
+				
+				if ( drill.getLevel().equals(currentLevel) && drillRoots.containsAncestorOf(drill)) {
+					itDrills.remove();
+					drills.add(drill);
 				}
 			}
-
-			// Executes drill for those members
-			int levelDistance = nextLevel.getDepth() - firstLevel.getDepth();
-			if (levelDistance == 1)
-				expression.drill(UnionBuilder.fromMembers(drilledRoots));
-			else
-				expression.include(Mdx.descendants(
-						UnionBuilder.fromMembers(drilledRoots), levelDistance));
-
-			// Prepares for next iteration
-			firstLevel = nextLevel;
-			previousUndrills = new CollectionMemberSet(
-					drilledRoots.toArray(new Member[drilledRoots.size()]));
-		}
-	}
-
-	private void expandDrills(MemberSet roots, List<Level> levelExclusions) {
-		Set<Member> previousDrill = new HashSet<Member>();
-		Set<Member> nextDrill;
-
-		Iterator<Member> itM = drillList.iterator();
-		nextDrill = new HashSet<Member>();
-		while (itM.hasNext()) {
-			Member m = itM.next();
-			if (roots.contains(m)) {
-				previousDrill.add(m);
-				expression.drill(Mdx.member(m));
-				itM.remove();
-			}
-		}
-
-		if (previousDrill.isEmpty())
-			return;
-
-		Level currentLevel = previousDrill.iterator().next().getLevel();
-		List<Level> levels = currentLevel.getHierarchy().getLevels();
-		Level nextLevel = findNextLevel(levels, currentLevel.getDepth(),
-				levelExclusions);
-
-		List<Member> effectiveDrills = new ArrayList<Member>();
-		while (!previousDrill.isEmpty() && nextLevel != null) {
-			nextDrill = new HashSet<Member>();
 			int levelDistance = nextLevel.getDepth() - currentLevel.getDepth();
+			if ( levelDistance == 1 )
+				expression.drill(drills.getMdx());
+			else
+				expression.include(Mdx.descendants(drills.getMdx(), levelDistance));
+			
 
-			itM = drillList.iterator();
-			effectiveDrills.clear();
-			MemberSet previousSet = new CollectionMemberSet(
-					previousDrill.toArray(new Member[previousDrill.size()]));
-			while (itM.hasNext()) {
-				Member m = itM.next();
-				if (m.getLevel().equals(nextLevel)
-						&& previousSet.containsAncestorOf(m)) {
-					effectiveDrills.add(m);
-					itM.remove();
-					nextDrill.add(m);
-				}
-			}
-
-			if (levelDistance == 1) {
-				expression.drill(UnionBuilder.fromMembers(effectiveDrills));
-			} else {
-				expression.include(Mdx.descendants(
-						UnionBuilder.fromMembers(effectiveDrills),
-						levelDistance));
-			}
-
-			previousDrill = nextDrill;
 			currentLevel = nextLevel;
-			nextLevel = findNextLevel(levels, currentLevel.getDepth(),
-					levelExclusions);
+			drillRoots = drills;
 		}
 	}
 
-	private void expandLevelDrills(MemberSet roots,
-			List<Level> includedLevels) {
-		List<Member> nextDrills = new ArrayList<Member>();
-		Iterator<Member> drillIt = drillList.iterator();
-		while( drillIt.hasNext() ) {
-			Member drill = drillIt.next();
-			if ( roots.contains(drill) ) {
-				nextDrills.add(drill);
-				drillIt.remove();
-			}
-		}
-
-		if ( nextDrills.isEmpty() )
-			return;
-		
-		Level currentLevel = nextDrills.iterator().next().getLevel();
-		List<Level> levels = currentLevel.getHierarchy().getLevels();
-		for(int iLevel = currentLevel.getDepth(); iLevel < levels.size(); ++iLevel ) {
-			Level nextLevel = levels.get(iLevel);
-			if ( includedLevels.contains(nextLevel)) {
-				if ( iLevel == currentLevel.getDepth()+1 ) {
-					expression.drill(UnionBuilder.fromMembers(nextDrills));
-				} else {
-					expression.include(Mdx.descendants(UnionBuilder.fromMembers(nextDrills), iLevel));
-				}
-				
-				drillIt = drillList.iterator();
-				roots = new CollectionMemberSet(nextDrills.toArray(new Member[nextDrills.size()]));
-				nextDrills.clear();
-				while( drillIt.hasNext() ) {
-					Member drill = drillIt.next();
-					
-					if ( drill.getLevel().getDepth() == iLevel &&
-							roots.containsAncestorOf(drill) ) {
-						nextDrills.add(drill);
-					}
-				}
-				
-				currentLevel = nextLevel;
-			}
+	private Sign getMemberAction(SelectionNode node) {
+		if ( node.getMemberSign() == Sign.INCLUDE ) {
+			if ( node.isMemberAlreadyIncluded() || (node.getMember().getLevel().equals(firstIncludedLevel)) )
+				return null;
+			return Sign.INCLUDE;
+		} else {
+			if ( node.isMemberAlreadyIncluded() || (node.getMember().getLevel().equals(firstIncludedLevel)) )
+				return Sign.EXCLUDE;
+			return null;
 		}
 	}
 
-	private Level findNextLevel(List<Level> levels, int depth,
-			List<Level> levelExclusions) {
-		for (int i = depth + 1; i < levels.size(); ++i) {
-			Level l = levels.get(i);
-			if (!levelExclusions.contains(l))
-				return l;
+	private MemberSet processChildren(SelectionNode node,
+			Sign childrenAction) {
+		if ( childrenAction == Sign.INCLUDE ) {
+			if ( node.getMemberSign() == Sign.INCLUDE )
+				expression.drill(Mdx.member(node.getMember()));
+			else
+				expression.include(Mdx.children(node.getMember()));
+			
 		}
-		return null;
+		else {
+			if ( childrenAction == Sign.EXCLUDE )  
+				expression.exclude(Mdx.children(node.getMember()));
+		}
+
+		List<Member> overridedChildren = node.getOverridedMembers();
+		if ( node.getChildrenSign() == Sign.INCLUDE ) {
+			CollectionMemberSet drilled = new CollectionMemberSet();
+			Iterator<Member> itDrill = drillList.iterator();
+			while(itDrill.hasNext()) {
+				Member drill = itDrill.next();
+				if ( node.getMember().equals(drill.getParentMember()) && 
+						!overridedChildren.contains(drill) ) {
+					drilled.add(drill);
+					itDrill.remove();
+				}
+			}
+			//expression.drill(drilled.getMdx());
+			return drilled;
+		} else {
+			if ( overridedChildren.isEmpty() )
+				return new GrandchildrenSet(node.getMember(), overridedChildren);
+			else
+				return new ChildrenMemberSet(node.getMember(), overridedChildren);
+		}
+			
+	}
+
+	private boolean processCommonCases(Sign memberAction, Sign childrenAction,
+			SelectionInfo descendantsSelection, SelectionNode node) {
+		return false;
+	}
+
+	private void processMember(SelectionNode node, Sign memberAction) {
+		if ( memberAction == Sign.INCLUDE ) {
+			expression.include(node.getMember());
+		} else if ( memberAction == Sign.EXCLUDE ) {
+			expression.exclude(node.getMember());
+		}
+	}
+
+	private boolean isCollapsed(SelectionNode node) {
+		return node.getMemberSign() == Sign.INCLUDE && !drillList.contains(node.getMember());
+	}
+
+	@Override
+	public void visitLeave(SelectionNode node) {
+	}
+
+	@Override
+	public boolean visitEnter(SelectionNode node) {
+		if ( node.getMember() == null ) {
+			expandRoot(node);
+			return true;
+		}
+		return expand(node);
 	}
 
 	@Override
 	public ParseTreeNode execute(SelectionNode root, List<Level> levels) {
 		expression = new AxisExpression();
 		this.levels = levels;
+		
+		List<Level> includedLevels = root.getIncludedLevels();
+		this.firstIncludedLevel = null;
+		if ( !includedLevels.isEmpty() ) {
+			this.firstIncludedLevel = includedLevels.get(0);
+			expression.include(Mdx.allMembers(this.firstIncludedLevel));
+		}
+		
 		root.accept(this);
 		return expression.getExpression();
 	}
 
 	@Override
 	public boolean isDrilled(Member member) {
-		if (drillList == null)
+		if ( drillList == null )
 			return false;
-
-		Member ancestor = member;
-		while (ancestor != null) {
-			if (!drillList.contains(ancestor))
+		Member parent = member;
+		while( parent != null ) {
+			if ( !drillList.contains(parent))
 				return false;
-
-			ancestor = ancestor.getParentMember();
+			
+			parent = parent.getParentMember();
 		}
+			
 		return true;
 	}
 
 	@Override
 	public void setDrills(List<Member> drills) {
-		this.drillList = drills;
+		this.drillList = new HashSet<Member>(drills);
+	}
+	
+	private Sign getChildrenAction(SelectionNode node) {
+		Sign s = node.getChildrenSign();
+		if ( s == Sign.INCLUDE ) {
+			if ( node.isChildrenLevelIncluded() )
+				s = null;
+		} else {
+			if ( !node.isChildrenLevelIncluded() )
+				s = null;
+		}
+		return s;
 	}
 
-	
+
 }

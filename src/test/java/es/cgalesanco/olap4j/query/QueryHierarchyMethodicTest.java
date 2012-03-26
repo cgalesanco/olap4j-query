@@ -109,11 +109,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Ed_Ich_Em
 				"Except(%1$s.Children, {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"%1$s.Children",
 				
 				// Root: Ed_Ich_Im
@@ -122,11 +122,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Id_Ech_Em
 				"Descendants(Except(%1$s.Children, {%2$s}), 1)",
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1))", // Can be optimized to "Descendants(%1$s, 2)"
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children)", // Can be optimized to "Descendants(%1$s, 2)"
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union(Descendants(%2$s, 2), Descendants(Except(%1$s.Children, {%2$s}), 1))",
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), Descendants(%2$s, 2))",
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1))", // Can be optimized to "Descendants(%1$s, 2)"
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children)", // Can be optimized to "Descendants(%1$s, 2)"
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
 				
 				// Root: Id_Ech_Im
@@ -135,11 +135,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Id_Ich_Em
 				"Except(%1$s.Children, {%2$s})", 
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"%1$s.Children",
 				
 				// Root: Id_Ich_Im
@@ -187,11 +187,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Ed_Ich_Em
 				"Except(%1$s.Children, {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"%1$s.Children",
 
 				// Root: Ed_Ich_Im
@@ -207,32 +207,32 @@ public class QueryHierarchyMethodicTest {
 				// Root Id_Ech_Em
 				"Descendants(Except(%1$s.Children, {%2$s}), 1)",
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1))", // Can be optimized to "Descendants(%1$s, 2)"
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children)", // Can be optimized to "Descendants(%1$s, 2)"
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union(Descendants(%2$s, 2), Descendants(Except(%1$s.Children, {%2$s}), 1))",
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), Descendants(%2$s, 2))",
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1))", // Can be optimized to "Descendants(%1$s, 2)"
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children)", // Can be optimized to "Descendants(%1$s, 2)"
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
 				
 				// Root: Id_Ech_Im
 				"Union({%1$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
 				"Union({%1$s, %2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union({%1$s}, Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1)))",
+				"Union({%1$s}, Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children))",
 				"Union({%1$s, %2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union({%1$s}, Union(Descendants(%2$s, 2), Descendants(Except(%1$s.Children, {%2$s}), 1)))",
+				"Union({%1$s}, Union(Descendants(Except(%1$s.Children, {%2$s}), 1), Descendants(%2$s, 2)))",
 				"Union({%1$s, %2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union({%1$s}, Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1)))",
+				"Union({%1$s}, Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children))",
 				"Union({%1$s, %2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
 				
 				
 				// Root: Id_Ich_Em
 				"Except(%1$s.Children, {%2$s})", 
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"%1$s.Children",
 				
 				// Root: Id_Ich_Im
@@ -288,58 +288,58 @@ public class QueryHierarchyMethodicTest {
 				// Root: Ed_Ich_Em
 				"Except(%1$s.Children, {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
-				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
-				"Union(Descendants(%2$s, 2), %1$s.Children)",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
+				"Union(%1$s.Children, Descendants(%2$s, 2))",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
 
 				// Root: Ed_Ich_Im
 				"Except(DrilldownMember({%1$s}, {%1$s}, RECURSIVE), {%2$s})",
 				"DrilldownMember({%1$s}, {%1$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, %2$s.Children), {%1$s}, RECURSIVE), {%2$s})",
-				"DrilldownMember({%1$s}, {%2$s, %1$s}, RECURSIVE)",
+				"DrilldownMember({%1$s}, {%1$s, %2$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, Descendants(%2$s, 2)), {%1$s}, RECURSIVE), {%2$s})",
 				"DrilldownMember(Union({%1$s}, Descendants(%2$s, 2)), {%1$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, %2$s.Children), {%1$s}, RECURSIVE), {%2$s})",
-				"DrilldownMember({%1$s}, {%2$s, %1$s}, RECURSIVE)",
+				"DrilldownMember({%1$s}, {%1$s, %2$s}, RECURSIVE)",
 				
 				// Root Id_Ech_Em
 				"Descendants(Except(%1$s.Children, {%2$s}), 1)",
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1))", // Can be optimized to "Descendants(%1$s, 2)"
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children)", // Can be optimized to "Descendants(%1$s, 2)"
 				"DrilldownMember(Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1)), {%2$s}, RECURSIVE)",
-				"Union(Descendants(%2$s, 2), Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union({%2$s}, Union(Descendants(%2$s, 2), Descendants(Except(%1$s.Children, {%2$s}), 1)))",
-				"Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1))", // Can be optimized to "Descendants(%1$s, 2)"
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), Descendants(%2$s, 2))",
+				"Union({%2$s}, Union(Descendants(Except(%1$s.Children, {%2$s}), 1), Descendants(%2$s, 2)))",
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children)", // Can be optimized to "Descendants(%1$s, 2)"
 				"DrilldownMember(Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1)), {%2$s}, RECURSIVE)",
 				
 				// Root: Id_Ech_Im
 				"Union({%1$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
 				"Union({%1$s, %2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union({%1$s}, Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1)))",
+				"Union({%1$s}, Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children))",
 				"DrilldownMember(Union({%1$s, %2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1)), {%2$s}, RECURSIVE)",
-				"Union({%1$s}, Union(Descendants(%2$s, 2), Descendants(Except(%1$s.Children, {%2$s}), 1)))",
-				"Union({%1$s, %2$s}, Union(Descendants(%2$s, 2), Descendants(Except(%1$s.Children, {%2$s}), 1)))", 
-				"Union({%1$s}, Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1)))",
+				"Union({%1$s}, Union(Descendants(Except(%1$s.Children, {%2$s}), 1), Descendants(%2$s, 2)))",
+				"Union({%1$s, %2$s}, Union(Descendants(Except(%1$s.Children, {%2$s}), 1), Descendants(%2$s, 2)))", 
+				"Union({%1$s}, Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children))",
 				"DrilldownMember(Union({%1$s, %2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1)), {%2$s}, RECURSIVE)",
 
 				// Root: Id_Ich_Em
 				"Except(%1$s.Children, {%2$s})", 
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
-				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
-				"Union(Descendants(%2$s, 2), %1$s.Children)",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
+				"Union(%1$s.Children, Descendants(%2$s, 2))",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
 				
 				// Root: Id_Ich_Im
 				"Except(DrilldownMember({%1$s}, {%1$s}, RECURSIVE), {%2$s})",
 				"DrilldownMember({%1$s}, {%1$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, %2$s.Children), {%1$s}, RECURSIVE), {%2$s})",
-				"DrilldownMember({%1$s}, {%2$s, %1$s}, RECURSIVE)",
+				"DrilldownMember({%1$s}, {%1$s, %2$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, Descendants(%2$s, 2)), {%1$s}, RECURSIVE), {%2$s})",
 				"DrilldownMember(Union({%1$s}, Descendants(%2$s, 2)), {%1$s}, RECURSIVE)",
 				"Except(DrilldownMember(Union({%1$s}, %2$s.Children), {%1$s}, RECURSIVE), {%2$s})",
@@ -349,11 +349,11 @@ public class QueryHierarchyMethodicTest {
 		int i = 0;
 		for (State st1 : State.values()) {
 			for (State st2 : State.values()) {
+				System.out.println(st1 + "/" + st2);
 				qh.clear();
 				st1.apply(rootMember);
 				st2.apply(childMember);
 				if (i < notDrilled.length) {
-					System.out.println(st1 + "/" + st2);
 					expander.setDrills(Arrays.asList(rootMember,childMember));
 					assertDrillExpression(notDrilled[i++], qh.toOlap4j(expander),
 							rootMember, childMember);
@@ -381,11 +381,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Ed_Ich_Em
 				"Except(%1$s.Children, {%2$s})",
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
-				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
-				"Union(Descendants(%2$s, 2), %1$s.Children)",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
+				"Union(%1$s.Children, Descendants(%2$s, 2))",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
 
 				// Root: Ed_Ich_Im
@@ -394,11 +394,11 @@ public class QueryHierarchyMethodicTest {
 				// Root Id_Ech_Em
 				"Descendants(Except(%1$s.Children, {%2$s}), 1)",
 				"Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1))", // Can be optimized to "Descendants(%1$s, 2)"
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children)", // Can be optimized to "Descendants(%1$s, 2)"
 				"DrilldownMember(Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1)), {%2$s}, RECURSIVE)",
-				"Union(Descendants(%2$s, 2), Descendants(Except(%1$s.Children, {%2$s}), 1))",
-				"Union({%2$s}, Union(Descendants(%2$s, 2), Descendants(Except(%1$s.Children, {%2$s}), 1)))",
-				"Union(%2$s.Children, Descendants(Except(%1$s.Children, {%2$s}), 1))", // Can be optimized to "Descendants(%1$s, 2)"
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), Descendants(%2$s, 2))",
+				"Union({%2$s}, Union(Descendants(Except(%1$s.Children, {%2$s}), 1), Descendants(%2$s, 2)))",
+				"Union(Descendants(Except(%1$s.Children, {%2$s}), 1), %2$s.Children)", // Can be optimized to "Descendants(%1$s, 2)"
 				"DrilldownMember(Union({%2$s}, Descendants(Except(%1$s.Children, {%2$s}), 1)), {%2$s}, RECURSIVE)",
 				
 				// Root: Id_Ech_Im
@@ -407,11 +407,11 @@ public class QueryHierarchyMethodicTest {
 				// Root: Id_Ich_Em
 				"Except(%1$s.Children, {%2$s})", 
 				"%1$s.Children",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
-				"Except(Union(Descendants(%2$s, 2), %1$s.Children), {%2$s})",
-				"Union(Descendants(%2$s, 2), %1$s.Children)",
-				"Except(Union(%2$s.Children, %1$s.Children), {%2$s})",
+				"Except(Union(%1$s.Children, Descendants(%2$s, 2)), {%2$s})",
+				"Union(%1$s.Children, Descendants(%2$s, 2))",
+				"Except(Union(%1$s.Children, %2$s.Children), {%2$s})",
 				"DrilldownMember(%1$s.Children, {%2$s}, RECURSIVE)",
 				
 				// Root: Id_Ich_Im

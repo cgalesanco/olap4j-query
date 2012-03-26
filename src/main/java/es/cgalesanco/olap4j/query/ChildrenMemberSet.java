@@ -1,5 +1,6 @@
 package es.cgalesanco.olap4j.query;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.olap4j.mdx.ParseTreeNode;
@@ -12,10 +13,10 @@ import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
 class ChildrenMemberSet implements MemberSet {
 	private Member parent;
-	private List<Member> excludedMembers;
+	private Collection<Member> excludedMembers;
 	private Level level;
 
-	public ChildrenMemberSet(Member parent, List<Member> excludedChildren) {
+	public ChildrenMemberSet(Member parent, Collection<Member> excludedChildren) {
 		this.parent = parent;
 		this.excludedMembers = excludedChildren;
 		this.level = parent.getLevel();
