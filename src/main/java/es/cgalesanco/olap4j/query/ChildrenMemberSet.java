@@ -1,7 +1,6 @@
 package es.cgalesanco.olap4j.query;
 
 import java.util.Collection;
-import java.util.List;
 
 import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.metadata.Level;

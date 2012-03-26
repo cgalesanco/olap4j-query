@@ -20,7 +20,6 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 	private static Level rootLevel;
 	private static Level childLevel;
 	private static Level grandsonLevel;
-	private static Member rootMember2;
 	private QueryHierarchy testHierarchy;
 	private HierarchyExpander expander;
 	
@@ -33,7 +32,6 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 		childLevel = baseHierarchy.getLevels().get(1);
 		grandsonLevel = baseHierarchy.getLevels().get(2);
 		rootMember = baseHierarchy.getRootMembers().get(0);
-		rootMember2 = baseHierarchy.getRootMembers().get(1);
 		childMember = rootMember.getChildMembers().get("Q2");
 	}
 
