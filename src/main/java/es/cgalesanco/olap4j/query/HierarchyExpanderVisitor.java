@@ -278,14 +278,7 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 	public boolean isDrilled(Member member) {
 		if (undrillList == null)
 			return true;
-		Member ancestor = member;
-		while (ancestor != null) {
-			if (undrillList.contains(ancestor))
-				return false;
-
-			ancestor = ancestor.getParentMember();
-		}
-		return true;
+		return !undrillList.contains(member);
 	}
 
 	@Override

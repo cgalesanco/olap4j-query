@@ -18,6 +18,7 @@ import org.olap4j.metadata.Member;
 
 import es.cgalesanco.olap4j.query.Selection.Operator;
 import es.cgalesanco.olap4j.query.Selection.Sign;
+import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 import es.cgalesanco.olap4j.query.mdx.Mdx;
 import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
@@ -573,7 +574,7 @@ class SelectionTree {
 			return info.getIncludedLevels().contains(member.getLevel());
 		}
 	}
-
+	
 	void applyLevel(Level level, Sign s) {
 		int seq = ++currentSequence;
 		levelSelections.put(level, new SelectionInfo(s, seq));
@@ -759,5 +760,44 @@ class SelectionTree {
 		return info.getSign() == Sign.INCLUDE;
 	}
 
+	public Member getParentMember(Member m) {
+		Member parent;
+		if ( (parent = m.getParentMember()) == null )
+			return null;
+		
+		SelectionNode memberNode = find(m);
+		if ( !parent.equals(memberNode.getMember()) ) {
+			SelectionInfo defaultInfo = memberNode.getDefaultSelection();
+			List<Level> overridingLevels = memberNode.getOverridingLevels(defaultInfo.getSign());
+			if ( defaultInfo.getSign() == Sign.INCLUDE ) {
+				while ( parent.getParentMember() == null || !parent.getParentMember().equals(memberNode.getMember())) {
+					if ( !overridingLevels.contains(parent.getLevel()) ) {
+						return parent;
+					}
+					
+					parent = parent.getParentMember();
+				}
+			} else {
+				while ( parent.getParentMember() == null || !parent.getParentMember().equals(memberNode.getMember())) {
+					if ( overridingLevels.contains(parent.getLevel()) ) {
+						return parent;
+					}
+					
+					parent = parent.getParentMember();
+				}
+			}
+			
+			if ( parent.getParentMember() == null ) 
+				return null;
+			
+			if ( memberNode.getChildrenSign() == Sign.INCLUDE )
+				return memberNode.getMember();
+		}
+			
+		while( memberNode != null && memberNode.getMemberSign() == Sign.EXCLUDE )
+			memberNode = memberNode.getParent();
+			
+		return memberNode == null ? null : memberNode.getMember();
+	}
 	
 }

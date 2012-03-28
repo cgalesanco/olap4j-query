@@ -446,4 +446,8 @@ public class QueryHierarchy {
 		return selectionTree.isIncluded(l);
 	}
 
+	public Member getParentMember(Member member) {
+		return selectionTree.getParentMember(member);
+	}
+
 }

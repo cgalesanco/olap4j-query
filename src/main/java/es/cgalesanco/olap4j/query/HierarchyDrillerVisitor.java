@@ -207,11 +207,6 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 			
 	}
 
-	private boolean processCommonCases(Sign memberAction, Sign childrenAction,
-			SelectionInfo descendantsSelection, SelectionNode node) {
-		return false;
-	}
-
 	private void processMember(SelectionNode node, Sign memberAction) {
 		if ( memberAction == Sign.INCLUDE ) {
 			expression.include(node.getMember());
@@ -274,15 +269,7 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 	public boolean isDrilled(Member member) {
 		if ( drillList == null )
 			return false;
-		Member parent = member;
-		while( parent != null ) {
-			if ( !drillList.contains(parent))
-				return false;
-			
-			parent = parent.getParentMember();
-		}
-			
-		return true;
+		return drillList.contains(member);
 	}
 
 	@Override
@@ -292,7 +279,6 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 	
 	private Sign getChildrenAction(SelectionNode node) {
 		Sign s = node.getChildrenSign();
-		Level childLevel = node.getChildrenLevel();
 		boolean childLevelIncluded = false; // firstIncludedLevel != null && firstIncludedLevel.equals(childLevel);
 		if ( s == Sign.INCLUDE ) { 
 			if ( childLevelIncluded )

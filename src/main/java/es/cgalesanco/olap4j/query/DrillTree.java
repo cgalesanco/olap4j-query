@@ -220,11 +220,16 @@ class DrillTree {
 		List<Member> childrenMembers = new ArrayList<Member>();
 		if (current.hasChildren()) {
 			for (Node child : current.children) {
-				if (!h.isIncluded(child.getMember()) || 
-					!expander.isDrilled(child.getMember().getParentMember()))
+				if (!h.isIncluded(child.getMember()) )  
 					continue;
-			
-				childrenMembers.add(child.getMember());
+
+				Member p = h.getParentMember(child.getMember());
+				while( p != null && expander.isDrilled(p)) {
+					p = h.getParentMember(p);
+				}
+
+				if ( p == null )
+					childrenMembers.add(child.getMember());
 			}
 		}
 
@@ -236,6 +241,7 @@ class DrillTree {
 				UnionBuilder.fromMembers(childrenMembers)));
 		for (int n = level + 1; n < dimensions.size(); ++n) {
 			HierarchyExpander nextExp = expanders.get(n);
+			nextExp.setDrills(null);
 			QueryHierarchy nh = dimensions.get(n);
 			xJoin.join(nh.toOlap4j(nextExp));
 		}
