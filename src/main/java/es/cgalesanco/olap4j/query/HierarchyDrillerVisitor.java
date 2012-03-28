@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.Stack;
 
 import org.olap4j.mdx.ParseTreeNode;
 import org.olap4j.metadata.Level;
@@ -12,12 +13,20 @@ import org.olap4j.metadata.Member;
 import es.cgalesanco.olap4j.query.Selection.Sign;
 import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 import es.cgalesanco.olap4j.query.mdx.Mdx;
+import es.cgalesanco.olap4j.query.mdx.UnionBuilder;
 
 class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 	private Set<Member> drillList;
 	private AxisExpression expression;
 	private List<Level> levels;
 	private Level firstIncludedLevel;
+	private boolean isHierarchyRoot;
+	private Stack<Boolean> hierarchyRootStack;
+	private UnionBuilder firstLevelExclusions;
+	
+	public HierarchyDrillerVisitor() {
+		hierarchyRootStack = new Stack<Boolean>();
+	}
 	
 	public boolean expand(SelectionNode node) {
 		Sign memberAction = getMemberAction(node);
@@ -32,12 +41,20 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 		Sign childrenAction = getChildrenAction(node);
 		SelectionInfo descendantsSelection = node.getDefaultSelection();
 		
-		if ( processCommonCases(memberAction, childrenAction, descendantsSelection, node) )
-			return true;
-		
 		processMember(node, memberAction);
 		
 		MemberSet drillRoots = processChildren(node, childrenAction);
+		
+		List<Member> overridedMembers = node.getOverridedMembers();
+		if ( isHierarchyRoot && firstIncludedLevel != null && firstIncludedLevel.getDepth () > node.getMember().getLevel().getDepth()+2 ) {
+			if ( descendantsSelection.getSign() == Sign.INCLUDE || node.getOverridingLevels(Sign.EXCLUDE).contains(firstIncludedLevel) ) {
+				if ( overridedMembers.isEmpty() )
+					firstLevelExclusions.add(Mdx.member(node.getMember()));
+				else
+					firstLevelExclusions.add(new ChildrenMemberSet(node.getMember(), node.getOverridedMembers()).getMdx());
+			}
+		}
+		
 		if ( drillRoots == null )
 			return true;
 		
@@ -161,6 +178,12 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 
 		List<Member> overridedChildren = node.getOverridedMembers();
 		if ( node.getChildrenSign() == Sign.INCLUDE ) {
+			if ( isHierarchyRoot && firstIncludedLevel != null && firstIncludedLevel.getDepth() > node.getChildrenLevel().getDepth() ) {
+				firstLevelExclusions.add(new ChildrenMemberSet(node.getMember(), overridedChildren).getMdx());
+				isHierarchyRoot = false;
+			}
+			
+			
 			CollectionMemberSet drilled = new CollectionMemberSet();
 			Iterator<Member> itDrill = drillList.iterator();
 			boolean drillFound = false;
@@ -180,6 +203,7 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 			else
 				return new ChildrenMemberSet(node.getMember(), overridedChildren);
 		}
+		
 			
 	}
 
@@ -194,6 +218,10 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 		} else if ( memberAction == Sign.EXCLUDE ) {
 			expression.exclude(node.getMember());
 		}
+		if ( isHierarchyRoot && firstIncludedLevel != null && firstIncludedLevel.getDepth() > node.getMember().getLevel().getDepth() ) {
+			firstLevelExclusions.add(Mdx.member(node.getMember()));
+			isHierarchyRoot = false;
+		}
 	}
 
 	private boolean isCollapsed(SelectionNode node) {
@@ -202,30 +230,43 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 
 	@Override
 	public void visitLeave(SelectionNode node) {
+		hierarchyRootStack.pop();
 	}
 
 	@Override
 	public boolean visitEnter(SelectionNode node) {
 		if ( node.getMember() == null ) {
+			isHierarchyRoot = true;
 			expandRoot(node);
+			hierarchyRootStack.push(true);
 			return true;
 		}
-		return expand(node);
+		boolean isHierarchyRoot = hierarchyRootStack.peek();
+		if ( expand(node) ) {
+			hierarchyRootStack.push(isHierarchyRoot && node.getMemberSign() == Sign.EXCLUDE);
+			return true;
+		} else 
+			return false;
 	}
 
 	@Override
 	public ParseTreeNode execute(SelectionNode root, List<Level> levels) {
 		expression = new AxisExpression();
 		this.levels = levels;
+		hierarchyRootStack.clear();
+		firstLevelExclusions = new UnionBuilder();
 		
 		List<Level> includedLevels = root.getIncludedLevels();
 		this.firstIncludedLevel = null;
 		if ( !includedLevels.isEmpty() ) {
 			this.firstIncludedLevel = includedLevels.get(0);
-			expression.include(Mdx.allMembers(this.firstIncludedLevel));
 		}
 		
 		root.accept(this);
+		
+		if ( firstIncludedLevel != null ) {
+			expression.include(Mdx.except(Mdx.allMembers(firstIncludedLevel), Mdx.descendants(firstLevelExclusions.getUnionNode(), firstIncludedLevel)));
+		}
 		return expression.getExpression();
 	}
 
@@ -252,7 +293,7 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 	private Sign getChildrenAction(SelectionNode node) {
 		Sign s = node.getChildrenSign();
 		Level childLevel = node.getChildrenLevel();
-		boolean childLevelIncluded = firstIncludedLevel != null && firstIncludedLevel.equals(childLevel);
+		boolean childLevelIncluded = false; // firstIncludedLevel != null && firstIncludedLevel.equals(childLevel);
 		if ( s == Sign.INCLUDE ) { 
 			if ( childLevelIncluded )
 				s = null;
