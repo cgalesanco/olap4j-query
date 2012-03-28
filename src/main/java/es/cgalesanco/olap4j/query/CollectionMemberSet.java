@@ -53,6 +53,8 @@ class CollectionMemberSet implements MemberSet {
 
 	@Override
 	public Level getLevel() {
+		if ( level == null && !members.isEmpty() )
+			return members.get(0).getLevel();
 		return level;
 	}
 

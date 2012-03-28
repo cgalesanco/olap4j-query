@@ -8,6 +8,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.olap4j.metadata.Hierarchy;
+import org.olap4j.metadata.Level;
 import org.olap4j.metadata.Member;
 
 import es.cgalesanco.olap4j.query.Selection.Operator;
@@ -19,6 +20,7 @@ public class QueryDimensionTest {
 	private static Member descendantMember;
 	private static Member rootMember;
 	private static CubeMock cube;
+	private static Level rootLevel;
 	
 	public Query query;
 	EnumSet<Operator> testOperators = EnumSet.of(Operator.MEMBER, Operator.CHILDREN, Operator.INCLUDE_CHILDREN, Operator.DESCENDANTS);
@@ -30,6 +32,7 @@ public class QueryDimensionTest {
 		rootMember = hierarchy.getRootMembers().get("1997");
 		childMember = rootMember.getChildMembers().get("Q2");
 		descendantMember = childMember.getChildMembers().get("5");
+		rootLevel = rootMember.getLevel();
 	}
 	
 	@Before
@@ -46,6 +49,17 @@ public class QueryDimensionTest {
 		List<Selection> resultSelections = dimension.listSelections();
 		Assert.assertArrayEquals(msg, expectedSelections, resultSelections
 				.toArray(new SelectionAction[resultSelections.size()]));
+	}
+
+	public void testLevelSelection(String msg, Selection[] expectedSelections,
+			Selection[] userSelections) {
+		QueryHierarchy dimension = query.getHierarchy(hierarchy.getName());
+		for (Selection op : userSelections) {
+			dimension.applySelection(op);
+		}
+		List<Selection> resultSelections = dimension.listSelections();
+		Assert.assertArrayEquals(msg, expectedSelections, resultSelections
+				.toArray(new Selection[resultSelections.size()]));
 	}
 
 	@Test
@@ -1555,6 +1569,20 @@ public class QueryDimensionTest {
 				new SelectionAction(rootMember, Sign.EXCLUDE, Operator.DESCENDANTS)}; 
 		testSelection("Same Member: IM,ICh", 
 				new SelectionAction[]{
+				},
+				user
+				);
+	}
+	
+	@Test
+	public void testWithLevelSelections() {
+		Selection[] user = new Selection[]{
+				new SelectionAction(rootMember, Sign.INCLUDE, Operator.DESCENDANTS),
+				new LevelSelection(rootLevel, Sign.INCLUDE)}; 
+		testLevelSelection("Same Member: IM,ICh", 
+				new Selection[]{
+					new SelectionAction(rootMember, Sign.INCLUDE, Operator.DESCENDANTS),
+					new LevelSelection(rootLevel, Sign.INCLUDE) 
 				},
 				user
 				);

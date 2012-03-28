@@ -38,8 +38,11 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 		processMember(node, memberAction);
 		
 		MemberSet drillRoots = processChildren(node, childrenAction);
+		if ( drillRoots == null )
+			return true;
 		
 		if ( descendantsSelection.getSign() == Sign.INCLUDE ) {
+			int lastLevelDepth = drillRoots.getLevel().getDepth();
 			List<Level> excludedLevels = node.getOverridingLevels(Sign.INCLUDE);
 			boolean lastLevelIncluded = node.getChildrenSign() == Sign.INCLUDE;
 			for(int iLevel = node.getMember().getDepth()+2; iLevel < levels.size(); ++iLevel) {
@@ -54,7 +57,7 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 				if ( lastLevelIncluded )
 					expression.drill(drillRoots.getMdx());
 				else
-					expression.include(Mdx.descendants(drillRoots.getMdx(), l.getDepth() - drillRoots.getLevel().getDepth()));
+					expression.include(Mdx.descendants(drillRoots.getMdx(), l.getDepth() - lastLevelDepth));
 				lastLevelIncluded = true;
 				
 				CollectionMemberSet nextRoots = new CollectionMemberSet();
@@ -68,6 +71,7 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 				}
 				
 				drillRoots = nextRoots;
+				lastLevelDepth = l.getDepth();
 			}
 		} else {
 			List<Level> includedLevels = node.getOverridingLevels(Sign.EXCLUDE);
@@ -159,16 +163,17 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 		if ( node.getChildrenSign() == Sign.INCLUDE ) {
 			CollectionMemberSet drilled = new CollectionMemberSet();
 			Iterator<Member> itDrill = drillList.iterator();
+			boolean drillFound = false;
 			while(itDrill.hasNext()) {
 				Member drill = itDrill.next();
 				if ( node.getMember().equals(drill.getParentMember()) && 
 						!overridedChildren.contains(drill) ) {
 					drilled.add(drill);
 					itDrill.remove();
+					drillFound = true;
 				}
 			}
-			//expression.drill(drilled.getMdx());
-			return drilled;
+			return drillFound ? drilled : null;
 		} else {
 			if ( overridedChildren.isEmpty() )
 				return new GrandchildrenSet(node.getMember(), overridedChildren);
@@ -246,11 +251,13 @@ class HierarchyDrillerVisitor implements SelectionNodeVisitor, ExpanderVisitor {
 	
 	private Sign getChildrenAction(SelectionNode node) {
 		Sign s = node.getChildrenSign();
-		if ( s == Sign.INCLUDE ) {
-			if ( node.isChildrenLevelIncluded() )
+		Level childLevel = node.getChildrenLevel();
+		boolean childLevelIncluded = firstIncludedLevel != null && firstIncludedLevel.equals(childLevel);
+		if ( s == Sign.INCLUDE ) { 
+			if ( childLevelIncluded )
 				s = null;
 		} else {
-			if ( !node.isChildrenLevelIncluded() )
+			if ( !childLevelIncluded )
 				s = null;
 		}
 		return s;

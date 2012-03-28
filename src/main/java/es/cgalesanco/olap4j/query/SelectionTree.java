@@ -1,7 +1,6 @@
 package es.cgalesanco.olap4j.query;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -191,7 +190,7 @@ class SelectionTree {
 			return defInfo.getSign();
 		}
 
-		private Level getChildrenLevel() {
+		Level getChildrenLevel() {
 			if ( getMember() == null )
 				return levels.get(0);
 			int pos = getMember().getLevel().getDepth()+1;
@@ -245,40 +244,6 @@ class SelectionTree {
 		 */
 		public List<SelectionNode> getOverridingChildren() {
 			return overridingChildren;
-		}
-
-		/**
-		 * Generates a list of Selections producing the current state of this
-		 * node.
-		 * 
-		 * @return the list of Selections.
-		 */
-		public Collection<? extends Selection> listSelections() {
-			List<Selection> list = new ArrayList<Selection>();
-
-			Sign sign = selections.get(Operator.DESCENDANTS);
-			if (sign != null)
-				list.add(new SelectionAction(getMember(), sign,
-						Operator.DESCENDANTS));
-
-			Sign childSign = selections.get(Operator.CHILDREN);
-			Sign memberSign = selections.get(Operator.MEMBER);
-			if (childSign != null) {
-				if (childSign == memberSign) {
-					list.add(new SelectionAction(getMember(), childSign,
-							Operator.INCLUDE_CHILDREN));
-					memberSign = null;
-				} else
-					list.add(new SelectionAction(getMember(), childSign,
-							Operator.CHILDREN));
-			}
-
-			if (memberSign != null) {
-				list.add(new SelectionAction(getMember(), memberSign,
-						Operator.MEMBER));
-			}
-
-			return list;
 		}
 
 		public boolean hasOverridingChildren() {
@@ -413,6 +378,70 @@ class SelectionTree {
 			return new SelectionInfo(s, prev.sequence);
 		}
 
+		public NavigableMap<Integer,List<SelectionAction>> listSelections() {
+			NavigableMap<Integer, List<SelectionAction>> selections = new TreeMap<Integer, List<SelectionAction>>();
+			
+			Sign s;
+			if ( (s = getSelectionSign(Operator.DESCENDANTS)) != null ) {
+				List<SelectionAction> l = new ArrayList<SelectionAction>();
+				l.add(new SelectionAction(getMember(), s, Operator.DESCENDANTS));
+				selections.put(getSequence(), l);
+			}
+			
+			Integer childrenSeq = null;
+			Sign childrenSign = null;
+			if ( (childrenSign = getSelectionSign(Operator.CHILDREN)) != null ) {
+				SelectionInfo info = levelSelections.get(getChildrenLevel());
+				childrenSeq = 0;
+				if ( info != null )
+					childrenSeq = info.getSequence();
+			}
+
+			Integer memberSeq = null;
+			Sign memberSign = null;
+			if ( (memberSign = getSelectionSign(Operator.MEMBER)) != null ) {
+				SelectionInfo info = levelSelections.get(getMemberLevel());
+				memberSeq = 0;
+				if ( info != null ) {
+					memberSeq = info.getSequence();
+				}
+			}
+			
+			if ( childrenSign != null && memberSign != null ) {
+				int combinedSeq = Math.max(childrenSeq, memberSeq);
+				if ( combinedSeq < getSequence() ) 
+					combinedSeq = getSequence();
+				List<SelectionAction> list = selections.get(combinedSeq);
+				if ( list == null ) {
+					list = new ArrayList<SelectionAction>();
+					selections.put(combinedSeq, list);
+				}
+				if ( childrenSign == memberSign ) {
+					list.add(new SelectionAction(getMember(), childrenSign, Operator.INCLUDE_CHILDREN));
+				} else {
+					list.add(new SelectionAction(getMember(), childrenSign, Operator.CHILDREN));
+					list.add(new SelectionAction(getMember(), memberSign, Operator.MEMBER));
+				}
+			} else if ( childrenSign != null ) {
+				childrenSeq = Math.max(childrenSeq, getSequence());
+				List<SelectionAction> list = selections.get(childrenSeq);
+				if ( list == null ) {
+					list = new ArrayList<SelectionAction>();
+					selections.put(childrenSeq, list);
+				}
+				list.add(new SelectionAction(getMember(), childrenSign, Operator.CHILDREN));
+			} else if ( memberSign != null ) {
+				memberSeq = Math.max(memberSeq, getSequence());
+				List<SelectionAction> list = selections.get(memberSeq);
+				if ( list == null ) {
+					list = new ArrayList<SelectionAction>();
+					selections.put(memberSeq, list);
+				}
+				list.add(new SelectionAction(getMember(), memberSign, Operator.MEMBER));
+			}
+			
+			return selections;
+		}
 	}
 
 	public SelectionNode find(Member member) {
@@ -459,26 +488,8 @@ class SelectionTree {
 	 */
 	public List<Selection> listSelections() {
 		SelectionListBuilder builder = new SelectionListBuilder(levelSelections);
-		for (SelectionNode r : root.getOverridingChildren())
-			listSelections(builder, r); 
+		root.accept(builder);
 		return builder.getResult();
-	}
-
-	/**
-	 * Immersion method to recursively generate the list of optimized
-	 * inclusion/exclusion.
-	 * 
-	 * @param result
-	 *            current list of selections.
-	 * @param from
-	 *            current selection node.
-	 */
-	private void listSelections(SelectionListBuilder builder, SelectionNode from) {
-		builder.addSelections(from);
-
-		for (SelectionNode child : from.getOverridingChildren()) {
-			listSelections(builder, child);
-		}
 	}
 
 	/**

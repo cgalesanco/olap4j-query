@@ -330,14 +330,7 @@ public class QueryHierarchy {
 			return info.getDefaultSign();
 			
 		case MEMBER:
-			if ( m.equals(info.getMember()))
-				return info.getMemberSign();
-			
-			if (m.getParentMember() != null
-					&& m.getParentMember().equals(info.getMember())) {
-				return info.getChildrenSign();
-			}
-			return info.getDefaultSign();
+			return isIncluded(m) ? Sign.INCLUDE : Sign.EXCLUDE;
 		}
 		return null;
 	}
@@ -416,6 +409,18 @@ public class QueryHierarchy {
 			default:
 				selectionTree.applyBasic(action);
 			}
+		}
+	}
+	
+	void applySelection(Selection sel) {
+		if ( sel instanceof SelectionAction )
+			apply((SelectionAction)sel);
+		else if ( sel instanceof LevelSelection ) {
+			LevelSelection s = (LevelSelection) sel;
+			if ( s.getSign() == Sign.INCLUDE )
+				include(s.getLevel());
+			else
+				exclude(s.getLevel());
 		}
 	}
 
