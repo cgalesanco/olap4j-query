@@ -778,7 +778,7 @@ class SelectionTree {
 					parent = parent.getParentMember();
 				}
 			} else {
-				while ( parent.getParentMember() == null || !parent.getParentMember().equals(memberNode.getMember())) {
+				while ( parent != null && (parent.getParentMember() == null || !parent.getParentMember().equals(memberNode.getMember()))) {
 					if ( overridingLevels.contains(parent.getLevel()) ) {
 						return parent;
 					}
@@ -787,7 +787,7 @@ class SelectionTree {
 				}
 			}
 			
-			if ( parent.getParentMember() == null ) 
+			if ( parent == null || parent.getParentMember() == null ) 
 				return null;
 			
 			if ( memberNode.getChildrenSign() == Sign.INCLUDE )
