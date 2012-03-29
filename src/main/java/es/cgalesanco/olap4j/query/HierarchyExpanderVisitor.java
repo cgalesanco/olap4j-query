@@ -24,6 +24,13 @@ class HierarchyExpanderVisitor implements SelectionNodeVisitor, ExpanderVisitor 
 		if ( isCollapsed(node) ) {
 			undrillList.remove(node.getMember());
 			processMember(node, memberAction);
+			List<Level> overridingLevels = node.getOverridingLevels(Sign.EXCLUDE);
+			Level childLevel = node.getChildrenLevel();
+			if ( node.getIncludedLevels().contains(childLevel) )
+				overridingLevels.add(0, childLevel);
+			for(Level l : overridingLevels) {
+				expression.exclude(Mdx.descendants(Mdx.member(node.getMember()), l));
+			}
 			return false;
 		}
 		

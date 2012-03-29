@@ -8,7 +8,7 @@ import org.olap4j.metadata.Member;
 
 import es.cgalesanco.olap4j.query.SelectionTree.SelectionNode;
 
-interface ExpanderVisitor {
+interface ExpanderVisitor extends SelectionNodeVisitor {
 	ParseTreeNode execute(SelectionNode root, List<Level> levels);
 
 	boolean isDrilled(Member member);
