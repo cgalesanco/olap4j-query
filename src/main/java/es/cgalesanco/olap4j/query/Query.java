@@ -137,11 +137,15 @@ public class Query {
 	 */
 	public SelectNode getSelect() throws OlapException {
 		List<AxisNode> axisList = new ArrayList<AxisNode>();
-		axisList.add(axes.get(Axis.COLUMNS).toOlap4j());
+    AxisNode tmpAxis = axes.get(Axis.COLUMNS).toOlap4j();
 
-		AxisNode tmpAxis = axes.get(Axis.ROWS).toOlap4j();
-		if (tmpAxis != null)
-			axisList.add(tmpAxis);
+    if ( tmpAxis != null ) {
+      axisList.add(tmpAxis);
+
+      tmpAxis = axes.get(Axis.ROWS).toOlap4j();
+      if (tmpAxis != null)
+        axisList.add(tmpAxis);
+    }
 
 		AxisNode filterAxis = null;
 
