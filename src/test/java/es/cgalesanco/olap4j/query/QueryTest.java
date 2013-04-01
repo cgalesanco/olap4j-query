@@ -110,7 +110,6 @@ public class QueryTest {
 	}
 	
 	@Test
-	@Ignore
 	public void testGetSelect_twoAxesAndFilter() throws Exception {
 		Cube c = query.getCube();
 		QueryHierarchy hMeasures = query.getHierarchy("Measures");

@@ -187,7 +187,7 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 				
 		expander.setDrills(Arrays.asList(rootMember));
 		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
-		assertMdx("Union(%1$s.AllMembers, Descendants({%2$s}, 2))", exp, rootLevel, rootMember);
+		assertMdx("Union(Descendants({%2$s}, 2), %1$s.AllMembers)", exp, rootLevel, rootMember);
 	}
 
 	@Test
@@ -197,7 +197,7 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 				
 		expander.setDrills(Arrays.asList(rootMember));
 		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
-		assertMdx("Union(%1$s.AllMembers, Descendants({%2$s}, 2))", exp, rootLevel, rootMember);
+		assertMdx("Union(Descendants({%2$s}, 2), %1$s.AllMembers)", exp, rootLevel, rootMember);
 	}
 	
 	@Test
@@ -209,6 +209,6 @@ public class QueryHierarchyLevelSelectionTest extends QueryTestBase {
 		expander.setDrills(Arrays.asList(rootMember,childMember));
 		ParseTreeNode exp = testHierarchy.toOlap4j(expander);
 		
-		assertMdx("DrilldownMember(Union({%3$s}, Union(%1$s.AllMembers, Descendants(Except(%2$s.Children, {%3$s}), Month))), {%3$s}, RECURSIVE)", exp, rootLevel, rootMember, childMember);
+		assertMdx("DrilldownMember(Union({%3$s}, Union(Descendants(Except(%2$s.Children, {%3$s}), Month), %1$s.AllMembers)), {%3$s}, RECURSIVE)", exp, rootLevel, rootMember, childMember);
 	}
 }
