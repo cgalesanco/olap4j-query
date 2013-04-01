@@ -92,12 +92,8 @@ public class RegressionIT {
 			File catalogFile = File.createTempFile("foodmart", ".xml");
 			FixtureUtils.copyResource("FoodMart.xml", catalogFile.getParentFile(), catalogFile.getName());
 
-			// TODO change to retrieve connection info from the integration testing environment.
-			Connection jdbcCn = DriverManager.getConnection("jdbc:mondrian:"
-					+ "JdbcDrivers=com.mysql.jdbc.Driver;"
-					+ "Jdbc=jdbc:mysql://localhost/foodmart;"
-					+ "JdbcUser=root;JdbcPassword=root;"
-					+ "Catalog=file:"+catalogFile.getAbsolutePath());
+      String jdbcUrl = System.getProperty("testJdbc");
+			Connection jdbcCn = DriverManager.getConnection("jdbc:mondrian:"+jdbcUrl+";Catalog=file:"+catalogFile.getAbsolutePath());
 			cn = jdbcCn.unwrap(OlapConnection.class);
 			cube = cn.getOlapSchema().getCubes().get("Sales");
 
