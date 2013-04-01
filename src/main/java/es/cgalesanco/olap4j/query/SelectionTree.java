@@ -494,7 +494,7 @@ class SelectionTree {
 	}
 
 	/**
-	 * Implementation of {@link #toOlap4j()} for filter axes.
+	 * Implementation toOlap4j for filter axes.
 	 */
 	ParseTreeNode toOlap4jFilter() {
 		return toOlap4jFilter(root);
@@ -506,8 +506,6 @@ class SelectionTree {
 	 * 
 	 * @param selectionNode
 	 *            current node
-	 * @param defaultSign
-	 *            default descendants sign at the current node.
 	 * @return the parse tree.
 	 */
 	private ParseTreeNode toOlap4jFilter(SelectionNode selectionNode) {
@@ -517,7 +515,7 @@ class SelectionTree {
 			// Current node has no overriding children, its filter expression is
 			// the corresponding MemberNode if the member is included, void in
 			// other case.
-			if (selectionSign == Sign.INCLUDE)
+			if (selectionNode.getMemberSign() == Sign.INCLUDE)
 				return Mdx.member(selectionNode.getMember());
 			else
 				return null;
@@ -554,7 +552,7 @@ class SelectionTree {
 	}
 
 	/**
-	 * Implementation of {@link #toOlap4j()} for query axes.
+	 * Implementation of toOlap4j() for query axes.
 	 */
 	ParseTreeNode toOlap4jQuery(HierarchyExpander expander) {
 		return expander.expand(root, levels);
