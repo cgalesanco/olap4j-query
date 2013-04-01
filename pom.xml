@@ -10,8 +10,8 @@
   <!-- GitHub configuration -->
   <scm>
     <connection>scm:git:git@github.com:cgalesanco/olap4j-query.git</connection>
-    <url>scm:git:git@github.com:cgalesanco/olap4j-query.git</url>
-    <developerConnection>scm:git:git@gitub.com:cgalesanco/olap4j-query.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:cgalesanco/olap4j-query.git</developerConnection>
+    <url>http://github.com/cgalesanco/olap4j-query</url>
   </scm>
 
   <!-- Repository configuration -->
