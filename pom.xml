@@ -46,17 +46,11 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- Mondrian and MySQL for Integration Tests -->
+		<!-- Mondrian for Integration Tests -->
 		<dependency>
 			<groupId>pentaho</groupId>
 			<artifactId>mondrian</artifactId>
 			<version>3.3.0.14703</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>mysql</groupId>
-			<artifactId>mysql-connector-java</artifactId>
-			<version>5.1.16</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -67,13 +61,21 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>2.12</version>
+				<version>2.14</version>
 				<executions>
 					<execution>
 						<goals>
 							<goal>integration-test</goal>
 							<goal>verify</goal>
 						</goals>
+            <configuration>
+              <systemPropertyVariables>
+                <!-- The test database JDBC url. Set by the active DB profile -->
+                <testJdbc>${es.cgalesanco.olap4jQuery.jdbcUrl}</testJdbc>
+                <!-- Moves the derby.log to the target directory -->
+                <derby.stream.error.file>target/derby.log</derby.stream.error.file>
+              </systemPropertyVariables>
+            </configuration>
 					</execution>
 				</executions>
 			</plugin>
@@ -168,6 +170,48 @@
 				</plugins>
 			</build>
 		</profile>
+
+    <profile>
+      <!--
+        Profile to execute integration tests against a MySQL database.
+        Adds the required dependencies and sets the Jdbc URL to be used by Mondrian
+      -->
+      <id>MySQL</id>
+      <properties>
+        <es.cgalesanco.olap4jQuery.jdbcUrl>
+          JdbcDrivers=com.mysql.jdbc.Driver;Jdbc=jdbc:mysql://localhost/foodmart;JdbcUser=root;JdbcPassword=password
+        </es.cgalesanco.olap4jQuery.jdbcUrl>
+      </properties>
+      <dependencies>
+        <dependency>
+          <groupId>mysql</groupId>
+          <artifactId>mysql-connector-java</artifactId>
+          <version>5.1.16</version>
+          <scope>test</scope>
+        </dependency>
+      </dependencies>
+    </profile>
+
+    <!--
+      Profile to execute integration tests against a Derby database.
+      Adds the required dependencies and sets the Jdbc URL to be used by Mondrian
+    -->
+    <profile>
+      <id>Derby</id>
+      <properties>
+        <es.cgalesanco.olap4jQuery.jdbcUrl>
+          JdbcDrivers=org.apache.derby.jdbc.EmbeddedDriver;Jdbc=jdbc:derby:/Users/cesar/foodmart;JdbcUser=sa;JdbcPassword=
+        </es.cgalesanco.olap4jQuery.jdbcUrl>
+      </properties>
+      <dependencies>
+        <dependency>
+          <groupId>org.apache.derby</groupId>
+          <artifactId>derby</artifactId>
+          <version>10.9.1.0</version>
+          <scope>test</scope>
+        </dependency>
+      </dependencies>
+    </profile>
 	</profiles>
 
 </project>
