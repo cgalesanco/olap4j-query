@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>cgalesanco</groupId>
+	<groupId>es.cgalesanco</groupId>
 	<artifactId>olap4j-query</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<description>Query object model over olap4j</description>
