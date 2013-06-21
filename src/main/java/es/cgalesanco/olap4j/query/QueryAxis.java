@@ -159,6 +159,34 @@ public class QueryAxis {
 		}
 	}
 
+  public void addHierarchy(int index, QueryHierarchy hierarchy) {
+    if (getQuery() != hierarchy.getQuery())
+      throw new IllegalArgumentException();
+
+    QueryAxis prevAxis = hierarchy.getAxis();
+    if (hierarchies.contains(hierarchy)) {
+      this.removeHierarchy(hierarchy);
+    }
+    this.addHierarchy(hierarchy);
+
+    hierarchies.add(hierarchy);
+    expanders.add(new HierarchyExpander());
+    hierarchy.setAxis(this);
+    clearSort();
+
+    if (this.getLocation() != null) {
+      Dimension dimension = hierarchy.getHierarchy().getDimension();
+      for (Hierarchy h : dimension.getHierarchies()) {
+        if (!h.equals(hierarchy.getHierarchy())) {
+          QueryHierarchy qh = getQuery().getHierarchy(h.getName());
+          if (qh != null && qh.getAxis().getLocation() != null) {
+            qh.getAxis().removeHierarchy(qh);
+          }
+        }
+      }
+    }
+  }
+
 	/**
 	 * Removes a query hierarchy from this axis.
 	 * 
