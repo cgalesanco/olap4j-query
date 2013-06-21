@@ -335,6 +335,24 @@ public class QueryHierarchy {
 		return null;
 	}
 
+
+  public boolean hasOverridingDescendants(Member m) {
+    SelectionNode info = selectionTree.find(m);
+    return info.hasOverridingChildren();
+  }
+
+  public boolean hasOverridingChildren(Member m) {
+    SelectionNode info = selectionTree.find(m);
+    final Sign childrenSign = info.getChildrenSign();
+    for(SelectionNode child : info.getOverridingChildren()) {
+      if ( child.getSelectionSign(Operator.MEMBER) != null ||
+           child.getSelectionSign(Operator.DESCENDANTS) != childrenSign) {
+        return true;
+      }
+    }
+    return false;
+  }
+
 	/**
 	 * <p>
 	 * For query hierarchies returns the parse tree expressing the set of
